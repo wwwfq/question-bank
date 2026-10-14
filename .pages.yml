@@ -37,6 +37,7 @@ content:
           values:
             - LeetCode
             - 洛谷
+            - 小图灵 OJ
             - Codeforces
             - 牛客
             - AtCoder
@@ -47,6 +48,7 @@ content:
             - NOIP
             - CSP-J
             - CSP-S
+      
       - name: sourceId
         label: 题号
         type: string
