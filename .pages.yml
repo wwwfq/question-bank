@@ -40,7 +40,13 @@ content:
             - Codeforces
             - 牛客
             - AtCoder
-            - 其他
+            - ICPC
+            - CCPC
+            - 蓝桥杯
+            - GESP
+            - NOIP
+            - CSP-J
+            - CSP-S
       - name: sourceId
         label: 题号
         type: string
