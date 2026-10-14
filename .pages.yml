@@ -100,7 +100,7 @@ content:
       - name: levels
         label: 适用级别
         type: select
-        required: true
+        required: false
         options:
           multiple: true
           min: 1
