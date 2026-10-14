@@ -94,19 +94,10 @@ content:
       - name: rating
         label: 推荐程度
         type: number
-        required: true
+        required: false
         options:
           min: 1
           max: 5
-      - name: status
-        label: 学习状态
-        type: select
-        required: true
-        options:
-          values:
-            - 待复习
-            - 已掌握
-            - 重点
       - name: createdAt
         label: 收录日期
         type: date
@@ -114,11 +105,11 @@ content:
         options:
           format: yyyy-MM-dd
       - name: summary
-        label: 一句话总结
+        label: 核心思想
         type: text
-        required: true
+        required: false
       - name: body
         label: 题目总结
         type: rich-text
-        required: true
+        required: false
 
