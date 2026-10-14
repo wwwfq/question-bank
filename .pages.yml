@@ -210,7 +210,13 @@ content:
             - 反悔贪心
             - 随机化
             - 字符串 string
-
+            
+       -name: rating
+        label: 适合人群
+        type: number
+        required: false
+        options:
+          min: 1
       - name: rating
         label: 推荐程度
         type: number
