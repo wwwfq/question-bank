@@ -103,7 +103,7 @@ content:
         required: false
         options:
           multiple: true
-          min: 1
+          min: 0
           values:
             - GESP 1级
             - GESP 2级
