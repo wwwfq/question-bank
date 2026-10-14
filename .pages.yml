@@ -198,6 +198,7 @@ content:
             - 启发式合并
             - 离线处理
             - 反悔贪心
+            - 随机化
 
       - name: rating
         label: 推荐程度
