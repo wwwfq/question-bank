@@ -57,7 +57,6 @@ const date = new Intl.DateTimeFormat('zh-CN', {
 
     <div class="detail-metadata">
       <span class={`difficulty difficulty-${frontmatter.difficulty}`}>{frontmatter.difficulty}</span>
-      <span class={`status status-${frontmatter.status}`}>{frontmatter.status}</span>
       <span class="rating">
         <Star size={14} fill="currentColor" />
         {frontmatter.rating ? `推荐 ${frontmatter.rating}` : '尚未评分'}

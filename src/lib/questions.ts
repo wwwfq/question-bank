@@ -7,7 +7,6 @@ export type RawQuestionData = {
   categories?: string[];
   tags?: string[];
   rating?: number;
-  status?: '待复习' | '已掌握' | '重点';
   createdAt: string;
   summary?: string;
 };
@@ -23,7 +22,6 @@ export type QuestionData = {
   categories: string[];
   tags: string[];
   rating: number | null;
-  status: '待复习' | '已掌握' | '重点';
   createdAt: string;
   summary: string;
 };
@@ -54,7 +52,6 @@ export function normalizeQuestionData(frontmatter: RawQuestionData): QuestionDat
     categories: frontmatter.categories ?? [],
     tags: frontmatter.tags ?? [],
     rating: frontmatter.rating ?? null,
-    status: frontmatter.status ?? '待复习',
     summary: frontmatter.summary ?? '',
   };
 }

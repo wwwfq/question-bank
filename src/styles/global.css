@@ -361,8 +361,7 @@ h3 {
 
 .tag-chip,
 .category-chip,
-.difficulty,
-.status {
+.difficulty {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -384,7 +383,7 @@ h3 {
 
 .question-meta {
   display: grid;
-  grid-template-columns: 58px 82px 68px 48px 20px;
+  grid-template-columns: minmax(72px, max-content) minmax(82px, max-content) minmax(72px, max-content) 20px;
   gap: 12px;
   align-items: center;
   justify-content: end;
@@ -392,8 +391,7 @@ h3 {
   font-size: 13px;
 }
 
-.difficulty,
-.status {
+.difficulty {
   justify-content: center;
   font-weight: 650;
 }
@@ -416,21 +414,6 @@ h3 {
 .difficulty-困难 {
   color: var(--red);
   background: var(--red-soft);
-}
-
-.status {
-  color: #555f69;
-  background: var(--surface-muted);
-}
-
-.status-重点 {
-  color: var(--red);
-  background: var(--red-soft);
-}
-
-.status-已掌握 {
-  color: var(--primary);
-  background: var(--primary-soft);
 }
 
 .rating {
@@ -518,7 +501,7 @@ h3 {
   font-size: 13px;
 }
 
-.detail-metadata > span:not(.difficulty):not(.status) {
+.detail-metadata > span:not(.difficulty) {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -630,7 +613,7 @@ h3 {
   }
 
   .question-meta {
-    grid-template-columns: repeat(4, max-content) 1fr;
+    grid-template-columns: repeat(3, max-content) 1fr;
     justify-content: start;
   }
 
