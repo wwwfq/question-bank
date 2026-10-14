@@ -226,8 +226,5 @@ content:
         label: 核心思想
         type: rich-text
         required: false
-      - name: body
-        label: 题目总结
-        type: rich-text
-        required: false
+
 
