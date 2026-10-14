@@ -54,22 +54,6 @@ content:
             - 简单
             - 中等
             - 困难
-      - name: categories
-        label: 分类
-        type: select
-        required: true
-        options:
-          multiple: true
-          min: 1
-          values:
-            - 数组
-            - 字符串
-            - 链表
-            - 栈与队列
-            - 树
-            - 图
-            - 数学
-            - 数据结构
       - name: tags
         label: 标签
         type: select
