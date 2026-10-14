@@ -217,7 +217,7 @@ content:
         options:
           format: yyyy-MM-dd
       - name: summary
-        label: 核心思想
+        label: 核心思路
         type: rich-text
         required: false
       - name: body
