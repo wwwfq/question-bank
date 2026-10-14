@@ -398,6 +398,11 @@ h3 {
   font-weight: 650;
 }
 
+.difficulty {
+  color: var(--blue);
+  background: var(--blue-soft);
+}
+
 .difficulty-简单 {
   color: var(--primary);
   background: var(--primary-soft);

@@ -1,12 +1,28 @@
+export type RawQuestionData = {
+  title: string;
+  source: string | string[];
+  sourceId?: string;
+  url?: string;
+  difficulty: string | string[];
+  categories?: string[];
+  tags?: string[];
+  rating?: number;
+  status?: '待复习' | '已掌握' | '重点';
+  createdAt: string;
+  summary?: string;
+};
+
 export type QuestionData = {
   title: string;
   source: string;
+  sourceValues: string[];
   sourceId?: string;
   url?: string;
-  difficulty: '简单' | '中等' | '困难';
+  difficulty: string;
+  difficultyValues: string[];
   categories: string[];
   tags: string[];
-  rating: number;
+  rating: number | null;
   status: '待复习' | '已掌握' | '重点';
   createdAt: string;
   summary: string;
@@ -17,8 +33,31 @@ export type Question = QuestionData & {
 };
 
 type MarkdownModule = {
-  frontmatter: QuestionData;
+  frontmatter: RawQuestionData;
 };
+
+function toList(value: string | string[] | undefined): string[] {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return value ? [value] : [];
+}
+
+export function normalizeQuestionData(frontmatter: RawQuestionData): QuestionData {
+  const sourceValues = toList(frontmatter.source);
+  const difficultyValues = toList(frontmatter.difficulty);
+
+  return {
+    ...frontmatter,
+    source: sourceValues.join('、') || '其他',
+    sourceValues,
+    difficulty: difficultyValues.join('、') || '未分类',
+    difficultyValues,
+    categories: frontmatter.categories ?? [],
+    tags: frontmatter.tags ?? [],
+    rating: frontmatter.rating ?? null,
+    status: frontmatter.status ?? '待复习',
+    summary: frontmatter.summary ?? '',
+  };
+}
 
 const modules = import.meta.glob<MarkdownModule>('/src/content/questions/*.md', {
   eager: true,
@@ -26,7 +65,7 @@ const modules = import.meta.glob<MarkdownModule>('/src/content/questions/*.md', 
 
 export const questions: Question[] = Object.entries(modules)
   .map(([path, module]) => ({
-    ...module.frontmatter,
+    ...normalizeQuestionData(module.frontmatter),
     slug: path.split('/').pop()?.replace(/\.md$/, '') ?? '',
   }))
   .sort(
@@ -34,7 +73,9 @@ export const questions: Question[] = Object.entries(modules)
       new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
   );
 
-export const sources = [...new Set(questions.map((question) => question.source))].sort();
-export const difficulties = ['简单', '中等', '困难'] as const;
+export const sources = [...new Set(questions.flatMap((question) => question.sourceValues))].sort();
+export const difficulties = [
+  ...new Set(questions.flatMap((question) => question.difficultyValues)),
+].sort();
 export const allTags = [...new Set(questions.flatMap((question) => question.tags))].sort();
 

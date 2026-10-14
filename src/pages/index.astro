@@ -81,8 +81,8 @@ const focusCount = questions.filter((question) => question.status === '重点').
             class="question-row"
             href={`${base}questions/${question.slug}/`}
             data-search={`${question.title} ${question.summary} ${question.source} ${question.categories.join(' ')} ${question.tags.join(' ')}`.toLowerCase()}
-            data-source={question.source}
-            data-difficulty={question.difficulty}
+            data-source={question.sourceValues.join('|')}
+            data-difficulty={question.difficultyValues.join('|')}
             data-tags={question.tags.join('|')}
           >
             <div class="question-main">
@@ -100,8 +100,8 @@ const focusCount = questions.filter((question) => question.status === '重点').
               <span class={`difficulty difficulty-${question.difficulty}`}>{question.difficulty}</span>
               <span>{question.source}</span>
               <span class={`status status-${question.status}`}>{question.status}</span>
-              <span class="rating" aria-label={`推荐程度 ${question.rating} 星`}>
-                <Star size={14} fill="currentColor" /> {question.rating}
+              <span class="rating" aria-label={question.rating ? `推荐程度 ${question.rating} 星` : '尚未评分'}>
+                <Star size={14} fill="currentColor" /> {question.rating ?? '未评分'}
               </span>
               <ChevronRight class="row-arrow" size={18} />
             </div>
@@ -135,8 +135,9 @@ const focusCount = questions.filter((question) => question.status === '重点').
 
       rows.forEach((row) => {
         const matchesSearch = !query || row.dataset.search?.includes(query);
-        const matchesSource = !source || row.dataset.source === source;
-        const matchesDifficulty = !difficulty || row.dataset.difficulty === difficulty;
+        const matchesSource = !source || row.dataset.source?.split('|').includes(source);
+        const matchesDifficulty =
+          !difficulty || row.dataset.difficulty?.split('|').includes(difficulty);
         const matchesTag = !tag || row.dataset.tags?.split('|').includes(tag);
         const visible = Boolean(matchesSearch && matchesSource && matchesDifficulty && matchesTag);
         row.hidden = !visible;

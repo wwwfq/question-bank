@@ -1,21 +1,13 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro';
+import {
+  normalizeQuestionData,
+  type RawQuestionData,
+} from '../../lib/questions';
 import { ArrowLeft, Calendar, ExternalLink, Star } from '@lucide/astro';
 
 type MarkdownModule = {
-  frontmatter: {
-    title: string;
-    source: string;
-    sourceId?: string;
-    url?: string;
-    difficulty: string;
-    categories: string[];
-    tags: string[];
-    rating: number;
-    status: string;
-    createdAt: string;
-    summary: string;
-  };
+  frontmatter: RawQuestionData;
   Content: any;
 };
 
@@ -31,7 +23,8 @@ export function getStaticPaths() {
 }
 
 const { module } = Astro.props as { module: MarkdownModule };
-const { frontmatter, Content } = module;
+const { Content } = module;
+const frontmatter = normalizeQuestionData(module.frontmatter);
 const base = import.meta.env.BASE_URL;
 const date = new Intl.DateTimeFormat('zh-CN', {
   year: 'numeric',
@@ -65,7 +58,10 @@ const date = new Intl.DateTimeFormat('zh-CN', {
     <div class="detail-metadata">
       <span class={`difficulty difficulty-${frontmatter.difficulty}`}>{frontmatter.difficulty}</span>
       <span class={`status status-${frontmatter.status}`}>{frontmatter.status}</span>
-      <span class="rating"><Star size={14} fill="currentColor" />推荐 {frontmatter.rating}</span>
+      <span class="rating">
+        <Star size={14} fill="currentColor" />
+        {frontmatter.rating ? `推荐 ${frontmatter.rating}` : '尚未评分'}
+      </span>
       <span><Calendar size={15} />{date}</span>
     </div>
 
