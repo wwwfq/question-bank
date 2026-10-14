@@ -32,6 +32,8 @@ content:
         type: select
         required: true
         options:
+          multiple: true
+          min: 1
           values:
             - LeetCode
             - 洛谷
@@ -50,6 +52,8 @@ content:
         type: select
         required: true
         options:
+          multiple: true
+          min: 1
           values:
             - 简单
             - 中等
