@@ -4,6 +4,7 @@ export type RawQuestionData = {
   sourceId?: string;
   url?: string;
   difficulty: string | string[];
+  levels?: string[];
   categories?: string[];
   tags?: string[];
   rating?: number;
@@ -19,6 +20,7 @@ export type QuestionData = {
   url?: string;
   difficulty: string;
   difficultyValues: string[];
+  levels: string[];
   categories: string[];
   tags: string[];
   rating: number | null;
@@ -49,6 +51,7 @@ export function normalizeQuestionData(frontmatter: RawQuestionData): QuestionDat
     sourceValues,
     difficulty: difficultyValues.join('、') || '未分类',
     difficultyValues,
+    levels: frontmatter.levels ?? [],
     categories: frontmatter.categories ?? [],
     tags: frontmatter.tags ?? [],
     rating: frontmatter.rating ?? null,
@@ -74,5 +77,6 @@ export const sources = [...new Set(questions.flatMap((question) => question.sour
 export const difficulties = [
   ...new Set(questions.flatMap((question) => question.difficultyValues)),
 ].sort();
+export const levels = [...new Set(questions.flatMap((question) => question.levels))].sort();
 export const allTags = [...new Set(questions.flatMap((question) => question.tags))].sort();
 

@@ -13,6 +13,7 @@ content:
         - title
         - source
         - difficulty
+        - levels
         - createdAt
       primary: title
       sort:
@@ -95,7 +96,29 @@ content:
             - "*3000"
             - "*3100"
             - "*3200"
-            
+
+      - name: levels
+        label: 适用级别
+        type: select
+        required: true
+        options:
+          multiple: true
+          min: 1
+          values:
+            - GESP 1级
+            - GESP 2级
+            - GESP 3级
+            - GESP 4级
+            - GESP 5级
+            - GESP 6级
+            - GESP 7级
+            - GESP 8级
+            - CSP-J
+            - CSP-S
+            - NOIP
+            - 省选
+            - NOI
+
       - name: tags
         label: 标签
         type: select

@@ -65,6 +65,7 @@ const date = new Intl.DateTimeFormat('zh-CN', {
     </div>
 
     <div class="detail-tags">
+      {frontmatter.levels.map((level) => <span class="level-chip">{level}</span>)}
       {frontmatter.categories.map((category) => <span class="category-chip">{category}</span>)}
       {frontmatter.tags.map((tag) => <span class="tag-chip">{tag}</span>)}
     </div>

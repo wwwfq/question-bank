@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { questions, sources, difficulties, allTags } from '../lib/questions';
+import { questions, sources, difficulties, levels, allTags } from '../lib/questions';
 import {
   BookMarked,
   ChevronRight,
@@ -57,6 +57,12 @@ const base = import.meta.env.BASE_URL;
         </select>
       </div>
       <div class="select-wrap">
+        <select id="level-filter" aria-label="按适用级别筛选">
+          <option value="">全部级别</option>
+          {levels.map((level) => <option value={level}>{level}</option>)}
+        </select>
+      </div>
+      <div class="select-wrap">
         <Tag size={16} />
         <select id="tag-filter" aria-label="按标签筛选">
           <option value="">全部标签</option>
@@ -76,9 +82,10 @@ const base = import.meta.env.BASE_URL;
           <a
             class="question-row"
             href={`${base}questions/${question.slug}/`}
-            data-search={`${question.title} ${question.summary} ${question.source} ${question.categories.join(' ')} ${question.tags.join(' ')}`.toLowerCase()}
+            data-search={`${question.title} ${question.summary} ${question.source} ${question.levels.join(' ')} ${question.categories.join(' ')} ${question.tags.join(' ')}`.toLowerCase()}
             data-source={question.sourceValues.join('|')}
             data-difficulty={question.difficultyValues.join('|')}
+            data-levels={question.levels.join('|')}
             data-tags={question.tags.join('|')}
           >
             <div class="question-main">
@@ -88,6 +95,7 @@ const base = import.meta.env.BASE_URL;
               </div>
               <p>{question.summary}</p>
               <div class="tag-list">
+                {question.levels.map((level) => <span class="level-chip">{level}</span>)}
                 {question.categories.map((category) => <span class="category-chip">{category}</span>)}
                 {question.tags.slice(0, 4).map((tag) => <span class="tag-chip">{tag}</span>)}
               </div>
@@ -116,6 +124,7 @@ const base = import.meta.env.BASE_URL;
     const searchInput = document.querySelector<HTMLInputElement>('#search');
     const sourceFilter = document.querySelector<HTMLSelectElement>('#source-filter');
     const difficultyFilter = document.querySelector<HTMLSelectElement>('#difficulty-filter');
+    const levelFilter = document.querySelector<HTMLSelectElement>('#level-filter');
     const tagFilter = document.querySelector<HTMLSelectElement>('#tag-filter');
     const rows = [...document.querySelectorAll<HTMLElement>('.question-row')];
     const resultCount = document.querySelector<HTMLElement>('#result-count');
@@ -125,6 +134,7 @@ const base = import.meta.env.BASE_URL;
       const query = searchInput?.value.trim().toLowerCase() ?? '';
       const source = sourceFilter?.value ?? '';
       const difficulty = difficultyFilter?.value ?? '';
+      const level = levelFilter?.value ?? '';
       const tag = tagFilter?.value ?? '';
       let visibleCount = 0;
 
@@ -133,8 +143,11 @@ const base = import.meta.env.BASE_URL;
         const matchesSource = !source || row.dataset.source?.split('|').includes(source);
         const matchesDifficulty =
           !difficulty || row.dataset.difficulty?.split('|').includes(difficulty);
+        const matchesLevel = !level || row.dataset.levels?.split('|').includes(level);
         const matchesTag = !tag || row.dataset.tags?.split('|').includes(tag);
-        const visible = Boolean(matchesSearch && matchesSource && matchesDifficulty && matchesTag);
+        const visible = Boolean(
+          matchesSearch && matchesSource && matchesDifficulty && matchesLevel && matchesTag,
+        );
         row.hidden = !visible;
         if (visible) visibleCount += 1;
       });
@@ -146,6 +159,7 @@ const base = import.meta.env.BASE_URL;
     searchInput?.addEventListener('input', updateResults);
     sourceFilter?.addEventListener('change', updateResults);
     difficultyFilter?.addEventListener('change', updateResults);
+    levelFilter?.addEventListener('change', updateResults);
     tagFilter?.addEventListener('change', updateResults);
   </script>
 </BaseLayout>
