@@ -1,0 +1,82 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import { ArrowLeft, Calendar, ExternalLink, Star } from '@lucide/astro';
+
+type MarkdownModule = {
+  frontmatter: {
+    title: string;
+    source: string;
+    sourceId?: string;
+    url?: string;
+    difficulty: string;
+    categories: string[];
+    tags: string[];
+    rating: number;
+    status: string;
+    createdAt: string;
+    summary: string;
+  };
+  Content: any;
+};
+
+export function getStaticPaths() {
+  const modules = import.meta.glob<MarkdownModule>('/src/content/questions/*.md', {
+    eager: true,
+  });
+
+  return Object.entries(modules).map(([path, module]) => ({
+    params: { slug: path.split('/').pop()?.replace(/\.md$/, '') },
+    props: { module },
+  }));
+}
+
+const { module } = Astro.props as { module: MarkdownModule };
+const { frontmatter, Content } = module;
+const base = import.meta.env.BASE_URL;
+const date = new Intl.DateTimeFormat('zh-CN', {
+  year: 'numeric',
+  month: 'long',
+  day: 'numeric',
+}).format(new Date(frontmatter.createdAt));
+---
+
+<BaseLayout title={`${frontmatter.title} · 算法题库`} description={frontmatter.summary}>
+  <article class="detail-page">
+    <a class="back-link" href={base}><ArrowLeft size={17} />返回题库</a>
+
+    <header class="detail-header">
+      <div class="detail-title-block">
+        <div class="detail-kicker">
+          <span>{frontmatter.source}</span>
+          {frontmatter.sourceId && <span>#{frontmatter.sourceId}</span>}
+        </div>
+        <h1>{frontmatter.title}</h1>
+        <p>{frontmatter.summary}</p>
+      </div>
+      {
+        frontmatter.url && (
+          <a class="outline-button" href={frontmatter.url} target="_blank" rel="noreferrer">
+            查看原题 <ExternalLink size={16} />
+          </a>
+        )
+      }
+    </header>
+
+    <div class="detail-metadata">
+      <span class={`difficulty difficulty-${frontmatter.difficulty}`}>{frontmatter.difficulty}</span>
+      <span class={`status status-${frontmatter.status}`}>{frontmatter.status}</span>
+      <span class="rating"><Star size={14} fill="currentColor" />推荐 {frontmatter.rating}</span>
+      <span><Calendar size={15} />{date}</span>
+    </div>
+
+    <div class="detail-tags">
+      {frontmatter.categories.map((category) => <span class="category-chip">{category}</span>)}
+      {frontmatter.tags.map((tag) => <span class="tag-chip">{tag}</span>)}
+    </div>
+
+    <div class="article-body">
+      <Content />
+    </div>
+  </article>
+</BaseLayout>
+

@@ -1,0 +1,155 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { questions, sources, difficulties, allTags } from '../lib/questions';
+import {
+  BookMarked,
+  CheckCircle2,
+  ChevronRight,
+  CircleAlert,
+  Filter,
+  Search,
+  Star,
+  Tag,
+} from '@lucide/astro';
+
+const base = import.meta.env.BASE_URL;
+const masteredCount = questions.filter((question) => question.status === '已掌握').length;
+const focusCount = questions.filter((question) => question.status === '重点').length;
+---
+
+<BaseLayout>
+  <section class="workspace">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">个人知识库</p>
+        <h1>算法题库</h1>
+        <p class="page-description">整理值得反复复习的题目、思路和易错点。</p>
+      </div>
+      <div class="stats" aria-label="题库统计">
+        <div class="stat">
+          <BookMarked size={18} />
+          <div><strong>{questions.length}</strong><span>收录题目</span></div>
+        </div>
+        <div class="stat">
+          <CheckCircle2 size={18} />
+          <div><strong>{masteredCount}</strong><span>已经掌握</span></div>
+        </div>
+        <div class="stat">
+          <CircleAlert size={18} />
+          <div><strong>{focusCount}</strong><span>重点复习</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <label class="search-box">
+        <Search size={18} />
+        <span class="sr-only">搜索题目</span>
+        <input id="search" type="search" placeholder="搜索题目、分类或标签" autocomplete="off" />
+      </label>
+      <div class="select-wrap">
+        <Filter size={16} />
+        <select id="source-filter" aria-label="按来源筛选">
+          <option value="">全部来源</option>
+          {sources.map((source) => <option value={source}>{source}</option>)}
+        </select>
+      </div>
+      <div class="select-wrap">
+        <select id="difficulty-filter" aria-label="按难度筛选">
+          <option value="">全部难度</option>
+          {difficulties.map((difficulty) => <option value={difficulty}>{difficulty}</option>)}
+        </select>
+      </div>
+      <div class="select-wrap">
+        <Tag size={16} />
+        <select id="tag-filter" aria-label="按标签筛选">
+          <option value="">全部标签</option>
+          {allTags.map((tag) => <option value={tag}>{tag}</option>)}
+        </select>
+      </div>
+    </div>
+
+    <div class="list-header">
+      <span id="result-count">共 {questions.length} 道题</span>
+      <span>按收录时间排序</span>
+    </div>
+
+    <div class="question-list" id="question-list">
+      {
+        questions.map((question) => (
+          <a
+            class="question-row"
+            href={`${base}questions/${question.slug}/`}
+            data-search={`${question.title} ${question.summary} ${question.source} ${question.categories.join(' ')} ${question.tags.join(' ')}`.toLowerCase()}
+            data-source={question.source}
+            data-difficulty={question.difficulty}
+            data-tags={question.tags.join('|')}
+          >
+            <div class="question-main">
+              <div class="question-title-line">
+                <h2>{question.title}</h2>
+                {question.sourceId && <span class="source-id">#{question.sourceId}</span>}
+              </div>
+              <p>{question.summary}</p>
+              <div class="tag-list">
+                {question.categories.map((category) => <span class="category-chip">{category}</span>)}
+                {question.tags.slice(0, 4).map((tag) => <span class="tag-chip">{tag}</span>)}
+              </div>
+            </div>
+            <div class="question-meta">
+              <span class={`difficulty difficulty-${question.difficulty}`}>{question.difficulty}</span>
+              <span>{question.source}</span>
+              <span class={`status status-${question.status}`}>{question.status}</span>
+              <span class="rating" aria-label={`推荐程度 ${question.rating} 星`}>
+                <Star size={14} fill="currentColor" /> {question.rating}
+              </span>
+              <ChevronRight class="row-arrow" size={18} />
+            </div>
+          </a>
+        ))
+      }
+    </div>
+
+    <div class="empty-state" id="empty-state" hidden>
+      <Search size={28} />
+      <strong>没有找到匹配的题目</strong>
+      <span>可以清空搜索条件后再试。</span>
+    </div>
+  </section>
+
+  <script>
+    const searchInput = document.querySelector<HTMLInputElement>('#search');
+    const sourceFilter = document.querySelector<HTMLSelectElement>('#source-filter');
+    const difficultyFilter = document.querySelector<HTMLSelectElement>('#difficulty-filter');
+    const tagFilter = document.querySelector<HTMLSelectElement>('#tag-filter');
+    const rows = [...document.querySelectorAll<HTMLElement>('.question-row')];
+    const resultCount = document.querySelector<HTMLElement>('#result-count');
+    const emptyState = document.querySelector<HTMLElement>('#empty-state');
+
+    function updateResults() {
+      const query = searchInput?.value.trim().toLowerCase() ?? '';
+      const source = sourceFilter?.value ?? '';
+      const difficulty = difficultyFilter?.value ?? '';
+      const tag = tagFilter?.value ?? '';
+      let visibleCount = 0;
+
+      rows.forEach((row) => {
+        const matchesSearch = !query || row.dataset.search?.includes(query);
+        const matchesSource = !source || row.dataset.source === source;
+        const matchesDifficulty = !difficulty || row.dataset.difficulty === difficulty;
+        const matchesTag = !tag || row.dataset.tags?.split('|').includes(tag);
+        const visible = Boolean(matchesSearch && matchesSource && matchesDifficulty && matchesTag);
+        row.hidden = !visible;
+        if (visible) visibleCount += 1;
+      });
+
+      if (resultCount) resultCount.textContent = `共 ${visibleCount} 道题`;
+      if (emptyState) emptyState.hidden = visibleCount !== 0;
+    }
+
+    searchInput?.addEventListener('input', updateResults);
+    sourceFilter?.addEventListener('change', updateResults);
+    difficultyFilter?.addEventListener('change', updateResults);
+    tagFilter?.addEventListener('change', updateResults);
+  </script>
+</BaseLayout>

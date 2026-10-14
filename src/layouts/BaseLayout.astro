@@ -1,0 +1,68 @@
+---
+import '../styles/global.css';
+import { BookOpen, GitFork, Plus } from '@lucide/astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = '算法题库',
+  description = '个人算法题目总结与复习题库',
+} = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <meta name="generator" content={Astro.generator} />
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <title>{title}</title>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href={base}>
+          <span class="brand-icon"><BookOpen size={19} stroke-width={2.2} /></span>
+          <span>算法题库</span>
+        </a>
+        <nav class="header-actions" aria-label="题库操作">
+          <a
+            class="icon-link"
+            href="https://github.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="打开 GitHub"
+            title="打开 GitHub"
+          >
+            <GitFork size={18} />
+          </a>
+          <a
+            class="primary-button"
+            href="https://app.pagescms.org"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Plus size={17} />
+            <span>录入题目</span>
+          </a>
+        </nav>
+      </div>
+    </header>
+    <main>
+      <slot />
+    </main>
+    <footer class="site-footer">
+      <div class="footer-inner">
+        <span>内容由 GitHub 保存，Pages CMS 管理</span>
+        <a href="https://app.pagescms.org" target="_blank" rel="noreferrer">管理题库</a>
+      </div>
+    </footer>
+  </body>
+</html>
+
