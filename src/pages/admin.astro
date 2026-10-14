@@ -1,0 +1,396 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import {
+  difficultyOptions,
+  levelOptions,
+  sourceOptions,
+  tagOptions,
+} from '../lib/options';
+import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
+---
+
+<BaseLayout title="管理题库 · 算法题库">
+  <section class="admin-page">
+    <div class="auth-panel" id="auth-panel">
+      <div>
+        <p class="eyebrow">题库管理</p>
+        <h1>管理员登录</h1>
+      </div>
+      <form class="auth-form" id="auth-form">
+        <label>
+          <span>邮箱</span>
+          <input type="email" name="email" autocomplete="email" required />
+        </label>
+        <button class="primary-button" type="submit">发送登录链接</button>
+      </form>
+      <p class="form-status" id="auth-status" aria-live="polite"></p>
+    </div>
+
+    <div class="admin-workspace" id="admin-workspace" hidden>
+      <aside class="admin-sidebar">
+        <div class="admin-sidebar-header">
+          <div>
+            <p class="eyebrow">题库管理</p>
+            <h1>题目</h1>
+          </div>
+          <button class="icon-button" id="new-question" type="button" title="新建题目">
+            <Plus size={18} />
+            <span class="sr-only">新建题目</span>
+          </button>
+        </div>
+        <label class="admin-search">
+          <span class="sr-only">搜索题目</span>
+          <input id="admin-search" type="search" placeholder="搜索题目" autocomplete="off" />
+        </label>
+        <div class="admin-question-list" id="admin-question-list"></div>
+        <button class="text-button" id="logout-button" type="button">
+          <LogOut size={16} />退出登录
+        </button>
+      </aside>
+
+      <main class="editor-pane">
+        <form id="question-form">
+          <input type="hidden" name="id" />
+          <div class="editor-toolbar">
+            <div>
+              <span class="editor-kicker" id="editor-kicker">新建题目</span>
+              <h2 id="editor-title">未命名题目</h2>
+            </div>
+            <div class="editor-actions">
+              <button class="icon-button danger-button" id="delete-button" type="button" title="删除题目" hidden>
+                <Trash2 size={18} />
+                <span class="sr-only">删除题目</span>
+              </button>
+              <button class="primary-button" type="submit">
+                <Save size={17} />保存
+              </button>
+            </div>
+          </div>
+
+          <p class="form-status" id="save-status" aria-live="polite"></p>
+
+          <div class="form-grid">
+            <label class="field field-wide">
+              <span>题目名称</span>
+              <input name="title" required />
+            </label>
+            <label class="field">
+              <span>题号</span>
+              <input name="source_id" />
+            </label>
+            <label class="field">
+              <span>收录日期</span>
+              <input name="created_date" type="date" required />
+            </label>
+            <label class="field field-wide">
+              <span>原题链接</span>
+              <input name="original_url" type="url" />
+            </label>
+          </div>
+
+          <fieldset class="choice-fieldset">
+            <legend>题目来源</legend>
+            <div class="choice-grid compact-choice-grid">
+              {sourceOptions.map((value) => (
+                <label class="check-chip">
+                  <input type="checkbox" name="sources" value={value} />
+                  <span>{value}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset class="choice-fieldset">
+            <legend>难度 / Rating</legend>
+            <div class="choice-grid compact-choice-grid">
+              {difficultyOptions.map((value) => (
+                <label class="check-chip">
+                  <input type="checkbox" name="difficulties" value={value} />
+                  <span>{value}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset class="choice-fieldset">
+            <legend>适用级别</legend>
+            <div class="choice-grid compact-choice-grid">
+              {levelOptions.map((value) => (
+                <label class="check-chip">
+                  <input type="checkbox" name="levels" value={value} />
+                  <span>{value}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <fieldset class="choice-fieldset">
+            <legend>标签</legend>
+            <input class="choice-search" id="tag-search" type="search" placeholder="筛选标签" autocomplete="off" />
+            <div class="choice-grid tag-choice-grid" id="tag-options">
+              {tagOptions.map((value) => (
+                <label class="check-chip" data-tag={value.toLowerCase()}>
+                  <input type="checkbox" name="tags" value={value} />
+                  <span>{value}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <div class="rich-editor-grid">
+            <label class="field rich-editor">
+              <span>题意</span>
+              <textarea name="statement" rows="12"></textarea>
+              <div class="rich-preview" id="statement-preview"></div>
+            </label>
+            <label class="field rich-editor">
+              <span>解题思路</span>
+              <textarea name="solution" rows="12"></textarea>
+              <div class="rich-preview" id="solution-preview"></div>
+            </label>
+          </div>
+
+          <label class="publish-toggle">
+            <input type="checkbox" name="published" checked />
+            <span>公开显示</span>
+          </label>
+        </form>
+      </main>
+    </div>
+  </section>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+    import { renderRichText } from '../lib/markdown';
+    import type { Question } from '../lib/questions';
+
+    const base = import.meta.env.BASE_URL;
+    const authPanel = document.querySelector<HTMLElement>('#auth-panel');
+    const authForm = document.querySelector<HTMLFormElement>('#auth-form');
+    const authStatus = document.querySelector<HTMLElement>('#auth-status');
+    const workspace = document.querySelector<HTMLElement>('#admin-workspace');
+    const questionForm = document.querySelector<HTMLFormElement>('#question-form');
+    const list = document.querySelector<HTMLElement>('#admin-question-list');
+    const search = document.querySelector<HTMLInputElement>('#admin-search');
+    const newButton = document.querySelector<HTMLButtonElement>('#new-question');
+    const deleteButton = document.querySelector<HTMLButtonElement>('#delete-button');
+    const logoutButton = document.querySelector<HTMLButtonElement>('#logout-button');
+    const saveStatus = document.querySelector<HTMLElement>('#save-status');
+    const editorTitle = document.querySelector<HTMLElement>('#editor-title');
+    const editorKicker = document.querySelector<HTMLElement>('#editor-kicker');
+    const tagSearch = document.querySelector<HTMLInputElement>('#tag-search');
+    const statementPreview = document.querySelector<HTMLElement>('#statement-preview');
+    const solutionPreview = document.querySelector<HTMLElement>('#solution-preview');
+    let questions: Question[] = [];
+    let activeId = '';
+
+    function setStatus(element: HTMLElement | null, message: string, error = false) {
+      if (!element) return;
+      element.textContent = message;
+      element.classList.toggle('is-error', error);
+    }
+
+    function setCheckedValues(name: string, values: string[]) {
+      questionForm
+        ?.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)
+        .forEach((input) => {
+          input.checked = values.includes(input.value);
+        });
+    }
+
+    function getValues(formData: FormData, name: string) {
+      return formData.getAll(name).map(String);
+    }
+
+    function updatePreviews() {
+      const statement = questionForm?.elements.namedItem('statement') as HTMLTextAreaElement | null;
+      const solution = questionForm?.elements.namedItem('solution') as HTMLTextAreaElement | null;
+      if (statementPreview) statementPreview.innerHTML = renderRichText(statement?.value ?? '');
+      if (solutionPreview) solutionPreview.innerHTML = renderRichText(solution?.value ?? '');
+    }
+
+    function resetForm() {
+      activeId = '';
+      questionForm?.reset();
+      const idInput = questionForm?.elements.namedItem('id') as HTMLInputElement | null;
+      const dateInput = questionForm?.elements.namedItem('created_date') as HTMLInputElement | null;
+      const publishedInput = questionForm?.elements.namedItem('published') as HTMLInputElement | null;
+      if (idInput) idInput.value = '';
+      if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+      if (publishedInput) publishedInput.checked = true;
+      if (deleteButton) deleteButton.hidden = true;
+      if (editorTitle) editorTitle.textContent = '未命名题目';
+      if (editorKicker) editorKicker.textContent = '新建题目';
+      setStatus(saveStatus, '');
+      updatePreviews();
+      renderList();
+    }
+
+    function editQuestion(question: Question) {
+      if (!questionForm) return;
+      activeId = question.id;
+      (questionForm.elements.namedItem('id') as HTMLInputElement).value = question.id;
+      (questionForm.elements.namedItem('title') as HTMLInputElement).value = question.title;
+      (questionForm.elements.namedItem('source_id') as HTMLInputElement).value = question.source_id ?? '';
+      (questionForm.elements.namedItem('original_url') as HTMLInputElement).value = question.original_url ?? '';
+      (questionForm.elements.namedItem('created_date') as HTMLInputElement).value =
+        question.created_at.slice(0, 10);
+      (questionForm.elements.namedItem('statement') as HTMLTextAreaElement).value = question.statement;
+      (questionForm.elements.namedItem('solution') as HTMLTextAreaElement).value = question.solution;
+      (questionForm.elements.namedItem('published') as HTMLInputElement).checked = question.published;
+      setCheckedValues('sources', question.sources);
+      setCheckedValues('difficulties', question.difficulties);
+      setCheckedValues('levels', question.levels);
+      setCheckedValues('tags', question.tags);
+      if (deleteButton) deleteButton.hidden = false;
+      if (editorTitle) editorTitle.textContent = question.title;
+      if (editorKicker) editorKicker.textContent = '编辑题目';
+      setStatus(saveStatus, '');
+      updatePreviews();
+      renderList();
+    }
+
+    function renderList() {
+      if (!list) return;
+      const query = search?.value.trim().toLowerCase() ?? '';
+      const visible = questions.filter((question) =>
+        [question.title, question.source_id, ...question.sources, ...question.tags]
+          .join(' ')
+          .toLowerCase()
+          .includes(query),
+      );
+      list.replaceChildren(
+        ...visible.map((question) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'admin-question-item';
+          button.classList.toggle('is-active', question.id === activeId);
+          const title = document.createElement('strong');
+          title.textContent = question.title;
+          const meta = document.createElement('span');
+          meta.textContent = `${question.sources.join('、') || '其他'}${question.published ? '' : ' · 未公开'}`;
+          button.append(title, meta);
+          button.addEventListener('click', () => editQuestion(question));
+          return button;
+        }),
+      );
+    }
+
+    async function loadQuestions() {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .returns<Question[]>();
+      if (error) {
+        setStatus(saveStatus, '当前账户没有管理权限。', true);
+        return;
+      }
+      questions = data ?? [];
+      renderList();
+      if (activeId) {
+        const latest = questions.find((question) => question.id === activeId);
+        if (latest) editQuestion(latest);
+      }
+    }
+
+    async function showAuthenticated() {
+      if (authPanel) authPanel.hidden = true;
+      if (workspace) workspace.hidden = false;
+      resetForm();
+      await loadQuestions();
+    }
+
+    authForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(authForm);
+      const email = String(formData.get('email') ?? '').trim();
+      setStatus(authStatus, '正在发送...');
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}${base}admin/`,
+        },
+      });
+      setStatus(
+        authStatus,
+        error ? error.message : '登录链接已发送，请在邮箱中打开。',
+        Boolean(error),
+      );
+    });
+
+    questionForm?.addEventListener('input', () => {
+      const title = questionForm.elements.namedItem('title') as HTMLInputElement | null;
+      if (editorTitle) editorTitle.textContent = title?.value.trim() || '未命名题目';
+      updatePreviews();
+    });
+
+    questionForm?.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const formData = new FormData(questionForm);
+      const id = String(formData.get('id') ?? '');
+      const payload = {
+        title: String(formData.get('title') ?? '').trim(),
+        source_id: String(formData.get('source_id') ?? '').trim() || null,
+        original_url: String(formData.get('original_url') ?? '').trim() || null,
+        sources: getValues(formData, 'sources'),
+        difficulties: getValues(formData, 'difficulties'),
+        levels: getValues(formData, 'levels'),
+        tags: getValues(formData, 'tags'),
+        statement: String(formData.get('statement') ?? ''),
+        solution: String(formData.get('solution') ?? ''),
+        published: formData.get('published') === 'on',
+        created_at: `${String(formData.get('created_date'))}T00:00:00+08:00`,
+      };
+
+      if (!payload.sources.length || !payload.difficulties.length || !payload.levels.length || !payload.tags.length) {
+        setStatus(saveStatus, '来源、难度、适用级别和标签至少各选一项。', true);
+        return;
+      }
+
+      setStatus(saveStatus, '正在保存...');
+      const request = id
+        ? supabase.from('questions').update(payload).eq('id', id)
+        : supabase.from('questions').insert(payload);
+      const { error } = await request;
+      if (error) {
+        setStatus(saveStatus, error.message, true);
+        return;
+      }
+      setStatus(saveStatus, '已保存');
+      await loadQuestions();
+      if (!id) resetForm();
+    });
+
+    deleteButton?.addEventListener('click', async () => {
+      if (!activeId || !window.confirm('确定删除这道题吗？')) return;
+      const { error } = await supabase.from('questions').delete().eq('id', activeId);
+      if (error) {
+        setStatus(saveStatus, error.message, true);
+        return;
+      }
+      await loadQuestions();
+      resetForm();
+    });
+
+    newButton?.addEventListener('click', resetForm);
+    search?.addEventListener('input', renderList);
+    tagSearch?.addEventListener('input', () => {
+      const query = tagSearch.value.trim().toLowerCase();
+      document.querySelectorAll<HTMLElement>('#tag-options [data-tag]').forEach((item) => {
+        item.hidden = Boolean(query) && !item.dataset.tag?.includes(query);
+      });
+    });
+    logoutButton?.addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.reload();
+    });
+
+    supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) void showAuthenticated();
+    });
+
+    const { data } = await supabase.auth.getSession();
+    if (data.session) void showAuthenticated();
+  </script>
+</BaseLayout>

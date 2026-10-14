@@ -1,0 +1,154 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { ArrowLeft, Calendar, ExternalLink } from '@lucide/astro';
+
+const base = import.meta.env.BASE_URL;
+---
+
+<BaseLayout title="题目详情 · 算法题库">
+  <article class="detail-page" id="question-detail">
+    <a class="back-link" href={base}><ArrowLeft size={17} />返回题库</a>
+
+    <div class="loading-state" id="detail-loading">正在加载题目...</div>
+    <div class="empty-state" id="detail-error" hidden>
+      <strong>题目不存在或暂时无法加载</strong>
+      <span>请返回题库后重新选择。</span>
+    </div>
+
+    <div id="detail-content" hidden>
+      <header class="detail-header">
+        <div class="detail-title-block">
+          <div class="detail-kicker" id="detail-kicker"></div>
+          <h1 id="detail-title"></h1>
+        </div>
+        <a
+          class="outline-button"
+          id="original-link"
+          target="_blank"
+          rel="noreferrer"
+          hidden
+        >
+          查看原题 <ExternalLink size={16} />
+        </a>
+      </header>
+
+      <div class="detail-metadata">
+        <span class="difficulty" id="detail-difficulty"></span>
+        <span><Calendar size={15} /><span id="detail-date"></span></span>
+      </div>
+
+      <div class="detail-tags" id="detail-tags"></div>
+
+      <div class="detail-content">
+        <section class="content-section" id="statement-section" hidden>
+          <h2>题意</h2>
+          <div class="rich-text" id="detail-statement"></div>
+        </section>
+        <section class="content-section" id="solution-section" hidden>
+          <h2>解题思路</h2>
+          <div class="rich-text" id="detail-solution"></div>
+        </section>
+      </div>
+    </div>
+  </article>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+    import { formatQuestionDate, primaryValue, type Question } from '../lib/questions';
+    import { renderRichText } from '../lib/markdown';
+
+    const params = new URLSearchParams(window.location.search);
+    const questionId = params.get('id');
+    const loading = document.querySelector<HTMLElement>('#detail-loading');
+    const errorState = document.querySelector<HTMLElement>('#detail-error');
+    const content = document.querySelector<HTMLElement>('#detail-content');
+
+    function appendChip(container: HTMLElement, text: string, className: string) {
+      const chip = document.createElement('span');
+      chip.className = className;
+      chip.textContent = text;
+      container.append(chip);
+    }
+
+    function renderQuestion(question: Question) {
+      document.title = `${question.title} · 算法题库`;
+      const kicker = document.querySelector<HTMLElement>('#detail-kicker');
+      const title = document.querySelector<HTMLElement>('#detail-title');
+      const originalLink = document.querySelector<HTMLAnchorElement>('#original-link');
+      const difficulty = document.querySelector<HTMLElement>('#detail-difficulty');
+      const date = document.querySelector<HTMLElement>('#detail-date');
+      const tags = document.querySelector<HTMLElement>('#detail-tags');
+      const statementSection = document.querySelector<HTMLElement>('#statement-section');
+      const solutionSection = document.querySelector<HTMLElement>('#solution-section');
+      const statement = document.querySelector<HTMLElement>('#detail-statement');
+      const solution = document.querySelector<HTMLElement>('#detail-solution');
+
+      if (kicker) {
+        kicker.replaceChildren();
+        appendChip(kicker, primaryValue(question.sources, '其他'), '');
+        if (question.source_id) appendChip(kicker, `#${question.source_id}`, '');
+      }
+      if (title) title.textContent = question.title;
+      if (difficulty) {
+        difficulty.textContent = primaryValue(question.difficulties, '未分类');
+      }
+      if (date) date.textContent = formatQuestionDate(question.created_at);
+      if (originalLink && question.original_url) {
+        originalLink.href = question.original_url;
+        originalLink.hidden = false;
+      }
+      if (tags) {
+        tags.replaceChildren();
+        question.levels.forEach((value) => appendChip(tags, value, 'level-chip'));
+        question.tags.forEach((value) => appendChip(tags, value, 'tag-chip'));
+      }
+      if (statement && statementSection && question.statement) {
+        statement.innerHTML = renderRichText(question.statement);
+        statementSection.hidden = false;
+      }
+      if (solution && solutionSection && question.solution) {
+        solution.innerHTML = renderRichText(question.solution);
+        solutionSection.hidden = false;
+      }
+
+      if (loading) loading.hidden = true;
+      if (errorState) errorState.hidden = true;
+      if (content) content.hidden = false;
+    }
+
+    async function loadQuestion() {
+      if (!questionId) {
+        if (loading) loading.hidden = true;
+        if (errorState) errorState.hidden = false;
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('id', questionId)
+        .single<Question>();
+
+      if (error || !data) {
+        if (loading) loading.hidden = true;
+        if (errorState) errorState.hidden = false;
+        return;
+      }
+
+      renderQuestion(data);
+    }
+
+    void loadQuestion();
+
+    if (questionId) {
+      supabase
+        .channel(`question-${questionId}`)
+        .on(
+          'postgres_changes',
+          { event: '*', schema: 'public', table: 'questions', filter: `id=eq.${questionId}` },
+          () => void loadQuestion(),
+        )
+        .subscribe();
+    }
+  </script>
+</BaseLayout>

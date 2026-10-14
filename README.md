@@ -1,6 +1,6 @@
 # 算法题库
 
-一个使用 Astro 构建、由 Pages CMS 图形化管理、发布到 GitHub Pages 的个人题库。
+一个使用 Astro 构建、由 Supabase 实时存储、发布到 GitHub Pages 的个人题库。
 
 ## 本地运行
 
@@ -9,15 +9,22 @@ npm install
 npm run dev
 ```
 
+## 数据库
+
+数据库迁移位于 `supabase/migrations`。在 Supabase SQL Editor 中执行迁移后：
+
+- 公共访客只能读取公开题目。
+- `question_admins` 表中的用户可以新增、修改和删除题目。
+- 页面通过 Supabase Realtime 接收题目变更。
+
+管理员首次通过 `/admin/` 登录后，将 `supabase/bootstrap-admin.sql` 中的
+`ADMIN_EMAIL` 替换为管理员邮箱并在 SQL Editor 中执行。
+
+选项列表在 `src/lib/options.ts` 中维护。
+
 ## 图形化录入
 
-1. 将仓库发布到 GitHub。
-2. 打开 [Pages CMS](https://app.pagescms.org) 并使用 GitHub 登录。
-3. 选择这个仓库。
-4. 点击“题目”并选择“新建”，填写表单后保存。
-5. GitHub Actions 会自动重新构建并发布网站。
-
-字段和标签选项在 `.pages.yml` 中维护。
+打开 `/admin/`，使用管理员邮箱接收登录链接。登录后可在同一页面新建、修改和删除题目。
 
 ## 发布
 

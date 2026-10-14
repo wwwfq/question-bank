@@ -1,16 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { questions, sources, difficulties, levels, allTags } from '../lib/questions';
-import { renderRichText } from '../lib/markdown';
+import { BookMarked, ChevronRight, Filter, Search, Tag } from '@lucide/astro';
 import {
-  BookMarked,
-  ChevronRight,
-  Filter,
-  Search,
-  Tag,
-} from '@lucide/astro';
-
-const base = import.meta.env.BASE_URL;
+  difficultyOptions,
+  levelOptions,
+  sourceOptions,
+  tagOptions,
+} from '../lib/options';
 ---
 
 <BaseLayout>
@@ -24,15 +20,15 @@ const base = import.meta.env.BASE_URL;
       <div class="stats" aria-label="题库统计">
         <div class="stat">
           <BookMarked size={18} />
-          <div><strong>{questions.length}</strong><span>收录题目</span></div>
+          <div><strong id="question-count">-</strong><span>收录题目</span></div>
         </div>
         <div class="stat">
           <Filter size={18} />
-          <div><strong>{sources.length}</strong><span>题目来源</span></div>
+          <div><strong id="source-count">-</strong><span>题目来源</span></div>
         </div>
         <div class="stat">
           <Tag size={18} />
-          <div><strong>{allTags.length}</strong><span>题目标签</span></div>
+          <div><strong id="tag-count">-</strong><span>题目标签</span></div>
         </div>
       </div>
     </div>
@@ -41,98 +37,139 @@ const base = import.meta.env.BASE_URL;
       <label class="search-box">
         <Search size={18} />
         <span class="sr-only">搜索题目</span>
-        <input id="search" type="search" placeholder="搜索题目、分类或标签" autocomplete="off" />
+        <input id="search" type="search" placeholder="搜索题目、题意或标签" autocomplete="off" />
       </label>
       <div class="select-wrap">
         <Filter size={16} />
         <select id="source-filter" aria-label="按来源筛选">
           <option value="">全部来源</option>
-          {sources.map((source) => <option value={source}>{source}</option>)}
+          {sourceOptions.map((source) => <option value={source}>{source}</option>)}
         </select>
       </div>
       <div class="select-wrap">
         <select id="difficulty-filter" aria-label="按难度筛选">
           <option value="">全部难度</option>
-          {difficulties.map((difficulty) => <option value={difficulty}>{difficulty}</option>)}
+          {difficultyOptions.map((difficulty) => <option value={difficulty}>{difficulty}</option>)}
         </select>
       </div>
       <div class="select-wrap">
         <select id="level-filter" aria-label="按适用级别筛选">
           <option value="">全部级别</option>
-          {levels.map((level) => <option value={level}>{level}</option>)}
+          {levelOptions.map((level) => <option value={level}>{level}</option>)}
         </select>
       </div>
       <div class="select-wrap">
         <Tag size={16} />
         <select id="tag-filter" aria-label="按标签筛选">
           <option value="">全部标签</option>
-          {allTags.map((tag) => <option value={tag}>{tag}</option>)}
+          {tagOptions.map((tag) => <option value={tag}>{tag}</option>)}
         </select>
       </div>
     </div>
 
     <div class="list-header">
-      <span id="result-count">共 {questions.length} 道题</span>
+      <span id="result-count">正在加载题目...</span>
       <span>按收录时间排序</span>
     </div>
 
-    <div class="question-list" id="question-list">
-      {
-        questions.map((question) => (
-          <a
-            class="question-row"
-            href={`${base}questions/${question.slug}/`}
-            data-search={`${question.title} ${question.statement} ${question.summary} ${question.source} ${question.levels.join(' ')} ${question.categories.join(' ')} ${question.tags.join(' ')}`.toLowerCase()}
-            data-source={question.sourceValues.join('|')}
-            data-difficulty={question.difficultyValues.join('|')}
-            data-levels={question.levels.join('|')}
-            data-tags={question.tags.join('|')}
-          >
-            <div class="question-main">
-              <div class="question-title-line">
-                <h2>{question.title}</h2>
-                {question.sourceId && <span class="source-id">#{question.sourceId}</span>}
-              </div>
-              {
-                (question.statement || question.summary) && (
-                  <div
-                    class="question-summary"
-                    set:html={renderRichText(question.statement || question.summary)}
-                  />
-                )
-              }
-              <div class="tag-list">
-                {question.levels.map((level) => <span class="level-chip">{level}</span>)}
-                {question.categories.map((category) => <span class="category-chip">{category}</span>)}
-                {question.tags.slice(0, 4).map((tag) => <span class="tag-chip">{tag}</span>)}
-              </div>
-            </div>
-            <div class="question-meta">
-              <span class={`difficulty difficulty-${question.difficulty}`}>{question.difficulty}</span>
-              <span>{question.source}</span>
-              <ChevronRight class="row-arrow" size={18} />
-            </div>
-          </a>
-        ))
-      }
-    </div>
+    <div class="question-list" id="question-list" aria-live="polite"></div>
 
     <div class="empty-state" id="empty-state" hidden>
       <Search size={28} />
       <strong>没有找到匹配的题目</strong>
       <span>可以清空搜索条件后再试。</span>
     </div>
+
+    <div class="empty-state" id="load-error" hidden>
+      <strong>题库暂时无法加载</strong>
+      <button class="outline-button" id="retry-button" type="button">重新加载</button>
+    </div>
   </section>
 
   <script>
+    import { supabase } from '../lib/supabase';
+    import { primaryValue, type Question } from '../lib/questions';
+    import { renderRichText } from '../lib/markdown';
+
+    const base = import.meta.env.BASE_URL;
     const searchInput = document.querySelector<HTMLInputElement>('#search');
     const sourceFilter = document.querySelector<HTMLSelectElement>('#source-filter');
     const difficultyFilter = document.querySelector<HTMLSelectElement>('#difficulty-filter');
     const levelFilter = document.querySelector<HTMLSelectElement>('#level-filter');
     const tagFilter = document.querySelector<HTMLSelectElement>('#tag-filter');
-    const rows = [...document.querySelectorAll<HTMLElement>('.question-row')];
+    const questionList = document.querySelector<HTMLElement>('#question-list');
     const resultCount = document.querySelector<HTMLElement>('#result-count');
     const emptyState = document.querySelector<HTMLElement>('#empty-state');
+    const loadError = document.querySelector<HTMLElement>('#load-error');
+    const retryButton = document.querySelector<HTMLButtonElement>('#retry-button');
+    let questions: Question[] = [];
+
+    function appendChip(container: HTMLElement, text: string, className: string) {
+      const chip = document.createElement('span');
+      chip.className = className;
+      chip.textContent = text;
+      container.append(chip);
+    }
+
+    function buildQuestionRow(question: Question) {
+      const row = document.createElement('a');
+      row.className = 'question-row';
+      row.href = `${base}question/?id=${encodeURIComponent(question.id)}`;
+
+      const main = document.createElement('div');
+      main.className = 'question-main';
+      const titleLine = document.createElement('div');
+      titleLine.className = 'question-title-line';
+      const title = document.createElement('h2');
+      title.textContent = question.title;
+      titleLine.append(title);
+      if (question.source_id) {
+        const sourceId = document.createElement('span');
+        sourceId.className = 'source-id';
+        sourceId.textContent = `#${question.source_id}`;
+        titleLine.append(sourceId);
+      }
+      main.append(titleLine);
+
+      const summaryValue = question.statement || question.solution;
+      if (summaryValue) {
+        const summary = document.createElement('div');
+        summary.className = 'question-summary';
+        summary.innerHTML = renderRichText(summaryValue);
+        main.append(summary);
+      }
+
+      const chips = document.createElement('div');
+      chips.className = 'tag-list';
+      question.levels.forEach((value) => appendChip(chips, value, 'level-chip'));
+      question.tags.slice(0, 4).forEach((value) => appendChip(chips, value, 'tag-chip'));
+      main.append(chips);
+
+      const meta = document.createElement('div');
+      meta.className = 'question-meta';
+      const difficulty = document.createElement('span');
+      difficulty.className = 'difficulty';
+      difficulty.textContent = primaryValue(question.difficulties, '未分类');
+      const source = document.createElement('span');
+      source.textContent = primaryValue(question.sources, '其他');
+      const arrow = document.createElement('span');
+      arrow.className = 'row-arrow';
+      arrow.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
+      meta.append(difficulty, source, arrow);
+      row.append(main, meta);
+      return row;
+    }
+
+    function updateStats() {
+      const sources = new Set(questions.flatMap((question) => question.sources));
+      const tags = new Set(questions.flatMap((question) => question.tags));
+      const questionCount = document.querySelector<HTMLElement>('#question-count');
+      const sourceCount = document.querySelector<HTMLElement>('#source-count');
+      const tagCount = document.querySelector<HTMLElement>('#tag-count');
+      if (questionCount) questionCount.textContent = String(questions.length);
+      if (sourceCount) sourceCount.textContent = String(sources.size);
+      if (tagCount) tagCount.textContent = String(tags.size);
+    }
 
     function updateResults() {
       const query = searchInput?.value.trim().toLowerCase() ?? '';
@@ -140,24 +177,55 @@ const base = import.meta.env.BASE_URL;
       const difficulty = difficultyFilter?.value ?? '';
       const level = levelFilter?.value ?? '';
       const tag = tagFilter?.value ?? '';
-      let visibleCount = 0;
-
-      rows.forEach((row) => {
-        const matchesSearch = !query || row.dataset.search?.includes(query);
-        const matchesSource = !source || row.dataset.source?.split('|').includes(source);
-        const matchesDifficulty =
-          !difficulty || row.dataset.difficulty?.split('|').includes(difficulty);
-        const matchesLevel = !level || row.dataset.levels?.split('|').includes(level);
-        const matchesTag = !tag || row.dataset.tags?.split('|').includes(tag);
-        const visible = Boolean(
-          matchesSearch && matchesSource && matchesDifficulty && matchesLevel && matchesTag,
+      const visible = questions.filter((question) => {
+        const searchText = [
+          question.title,
+          question.statement,
+          question.solution,
+          ...question.sources,
+          ...question.levels,
+          ...question.tags,
+        ]
+          .join(' ')
+          .toLowerCase();
+        return (
+          (!query || searchText.includes(query)) &&
+          (!source || question.sources.includes(source)) &&
+          (!difficulty || question.difficulties.includes(difficulty)) &&
+          (!level || question.levels.includes(level)) &&
+          (!tag || question.tags.includes(tag))
         );
-        row.hidden = !visible;
-        if (visible) visibleCount += 1;
       });
 
-      if (resultCount) resultCount.textContent = `共 ${visibleCount} 道题`;
-      if (emptyState) emptyState.hidden = visibleCount !== 0;
+      if (questionList) {
+        questionList.replaceChildren(...visible.map(buildQuestionRow));
+        questionList.hidden = visible.length === 0;
+      }
+      if (resultCount) resultCount.textContent = `共 ${visible.length} 道题`;
+      if (emptyState) emptyState.hidden = visible.length !== 0;
+    }
+
+    async function loadQuestions() {
+      if (loadError) loadError.hidden = true;
+      if (resultCount) resultCount.textContent = '正在加载题目...';
+      const { data, error } = await supabase
+        .from('questions')
+        .select('*')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .returns<Question[]>();
+
+      if (error) {
+        if (questionList) questionList.hidden = true;
+        if (emptyState) emptyState.hidden = true;
+        if (loadError) loadError.hidden = false;
+        if (resultCount) resultCount.textContent = '加载失败';
+        return;
+      }
+
+      questions = data ?? [];
+      updateStats();
+      updateResults();
     }
 
     searchInput?.addEventListener('input', updateResults);
@@ -165,5 +233,16 @@ const base = import.meta.env.BASE_URL;
     difficultyFilter?.addEventListener('change', updateResults);
     levelFilter?.addEventListener('change', updateResults);
     tagFilter?.addEventListener('change', updateResults);
+    retryButton?.addEventListener('click', () => void loadQuestions());
+
+    void loadQuestions();
+    supabase
+      .channel('public-questions')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'questions' },
+        () => void loadQuestions(),
+      )
+      .subscribe();
   </script>
 </BaseLayout>

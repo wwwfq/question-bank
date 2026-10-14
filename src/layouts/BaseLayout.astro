@@ -35,19 +35,17 @@ const base = import.meta.env.BASE_URL;
         <nav class="header-actions" aria-label="题库操作">
           <a
             class="icon-link"
-            href="https://github.com"
+            href="https://github.com/wwwfq/question-bank"
             target="_blank"
             rel="noreferrer"
-            aria-label="打开 GitHub"
-            title="打开 GitHub"
+            aria-label="打开 GitHub 仓库"
+            title="打开 GitHub 仓库"
           >
             <GitFork size={18} />
           </a>
           <a
             class="primary-button"
-            href="https://app.pagescms.org"
-            target="_blank"
-            rel="noreferrer"
+            href={`${base}admin/`}
           >
             <Plus size={17} />
             <span>录入题目</span>
@@ -60,8 +58,8 @@ const base = import.meta.env.BASE_URL;
     </main>
     <footer class="site-footer">
       <div class="footer-inner">
-        <span>内容由 GitHub 保存，Pages CMS 管理</span>
-        <a href="https://app.pagescms.org" target="_blank" rel="noreferrer">管理题库</a>
+        <span>题目数据由 Supabase 实时同步</span>
+        <a href={`${base}admin/`}>管理题库</a>
       </div>
     </footer>
   </body>
