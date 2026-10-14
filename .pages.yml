@@ -232,13 +232,6 @@ content:
             - 反悔贪心
             - 随机化
             - 字符串 string
-      - name: rating
-        label: 推荐程度
-        type: number
-        required: false
-        options:
-          min: 1
-          max: 5
       - name: createdAt
         label: 收录日期
         type: date
