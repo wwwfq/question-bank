@@ -78,21 +78,19 @@ content:
           multiple: true
           min: 1
           values:
-            - 哈希表
-            - 二分查找
-            - 双指针
-            - 滑动窗口
-            - 贪心
-            - 动态规划
-            - 回溯
-            - 深度优先搜索
-            - 广度优先搜索
-            - 并查集
-            - 单调栈
-            - 前缀和
-            - 排序
-            - 查找
-            - 边界
+            - 字符串
+            - 后缀自动机 SAM
+            - 字典树 Trie
+            - AC 自动机
+            - KMP 算法
+            - 动态规划 DP
+            - 背包 DP
+            - 数位 DP
+            - 区间 DP
+            - 树形 DP
+            - 线性 DP
+            - 状压 DP
+
       - name: rating
         label: 推荐程度
         type: number
