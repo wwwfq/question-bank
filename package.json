@@ -13,6 +13,9 @@
   },
   "dependencies": {
     "@lucide/astro": "^1.57.0",
-    "astro": "^7.3.8"
+    "astro": "^7.3.8",
+    "katex": "^0.18.11",
+    "marked": "^18.1.1",
+    "marked-katex-extension": "^5.1.13"
   }
 }

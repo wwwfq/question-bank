@@ -238,6 +238,10 @@ content:
         required: true
         options:
           format: yyyy-MM-dd
+      - name: statement
+        label: 题意
+        type: rich-text
+        required: false
       - name: summary
         label: 解题思路
         type: rich-text

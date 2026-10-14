@@ -4,7 +4,8 @@ import {
   normalizeQuestionData,
   type RawQuestionData,
 } from '../../lib/questions';
-import { ArrowLeft, Calendar, ExternalLink, Star } from '@lucide/astro';
+import { renderRichText } from '../../lib/markdown';
+import { ArrowLeft, Calendar, ExternalLink } from '@lucide/astro';
 
 type MarkdownModule = {
   frontmatter: RawQuestionData;
@@ -33,7 +34,10 @@ const date = new Intl.DateTimeFormat('zh-CN', {
 }).format(new Date(frontmatter.createdAt));
 ---
 
-<BaseLayout title={`${frontmatter.title} · 算法题库`} description={frontmatter.summary}>
+<BaseLayout
+  title={`${frontmatter.title} · 算法题库`}
+  description={frontmatter.statement || frontmatter.summary}
+>
   <article class="detail-page">
     <a class="back-link" href={base}><ArrowLeft size={17} />返回题库</a>
 
@@ -44,7 +48,6 @@ const date = new Intl.DateTimeFormat('zh-CN', {
           {frontmatter.sourceId && <span>#{frontmatter.sourceId}</span>}
         </div>
         <h1>{frontmatter.title}</h1>
-        <p>{frontmatter.summary}</p>
       </div>
       {
         frontmatter.url && (
@@ -57,10 +60,6 @@ const date = new Intl.DateTimeFormat('zh-CN', {
 
     <div class="detail-metadata">
       <span class={`difficulty difficulty-${frontmatter.difficulty}`}>{frontmatter.difficulty}</span>
-      <span class="rating">
-        <Star size={14} fill="currentColor" />
-        {frontmatter.rating ? `推荐 ${frontmatter.rating}` : '尚未评分'}
-      </span>
       <span><Calendar size={15} />{date}</span>
     </div>
 
@@ -68,6 +67,25 @@ const date = new Intl.DateTimeFormat('zh-CN', {
       {frontmatter.levels.map((level) => <span class="level-chip">{level}</span>)}
       {frontmatter.categories.map((category) => <span class="category-chip">{category}</span>)}
       {frontmatter.tags.map((tag) => <span class="tag-chip">{tag}</span>)}
+    </div>
+
+    <div class="detail-content">
+      {
+        frontmatter.statement && (
+          <section class="content-section">
+            <h2>题意</h2>
+            <div class="rich-text" set:html={renderRichText(frontmatter.statement)} />
+          </section>
+        )
+      }
+      {
+        frontmatter.summary && (
+          <section class="content-section">
+            <h2>解题思路</h2>
+            <div class="rich-text" set:html={renderRichText(frontmatter.summary)} />
+          </section>
+        )
+      }
     </div>
 
     <div class="article-body">

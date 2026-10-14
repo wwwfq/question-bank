@@ -1,12 +1,12 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
 import { questions, sources, difficulties, levels, allTags } from '../lib/questions';
+import { renderRichText } from '../lib/markdown';
 import {
   BookMarked,
   ChevronRight,
   Filter,
   Search,
-  Star,
   Tag,
 } from '@lucide/astro';
 
@@ -19,7 +19,7 @@ const base = import.meta.env.BASE_URL;
       <div>
         <p class="eyebrow">个人知识库</p>
         <h1>算法题库</h1>
-        <p class="page-description">整理和检索合适的题目、核心思路与算法标签。</p>
+        <p class="page-description">整理和检索合适的题目、解题思路与算法标签。</p>
       </div>
       <div class="stats" aria-label="题库统计">
         <div class="stat">
@@ -82,7 +82,7 @@ const base = import.meta.env.BASE_URL;
           <a
             class="question-row"
             href={`${base}questions/${question.slug}/`}
-            data-search={`${question.title} ${question.summary} ${question.source} ${question.levels.join(' ')} ${question.categories.join(' ')} ${question.tags.join(' ')}`.toLowerCase()}
+            data-search={`${question.title} ${question.statement} ${question.summary} ${question.source} ${question.levels.join(' ')} ${question.categories.join(' ')} ${question.tags.join(' ')}`.toLowerCase()}
             data-source={question.sourceValues.join('|')}
             data-difficulty={question.difficultyValues.join('|')}
             data-levels={question.levels.join('|')}
@@ -93,7 +93,14 @@ const base = import.meta.env.BASE_URL;
                 <h2>{question.title}</h2>
                 {question.sourceId && <span class="source-id">#{question.sourceId}</span>}
               </div>
-              <p>{question.summary}</p>
+              {
+                (question.statement || question.summary) && (
+                  <div
+                    class="question-summary"
+                    set:html={renderRichText(question.statement || question.summary)}
+                  />
+                )
+              }
               <div class="tag-list">
                 {question.levels.map((level) => <span class="level-chip">{level}</span>)}
                 {question.categories.map((category) => <span class="category-chip">{category}</span>)}
@@ -103,9 +110,6 @@ const base = import.meta.env.BASE_URL;
             <div class="question-meta">
               <span class={`difficulty difficulty-${question.difficulty}`}>{question.difficulty}</span>
               <span>{question.source}</span>
-              <span class="rating" aria-label={question.rating ? `推荐程度 ${question.rating} 星` : '尚未评分'}>
-                <Star size={14} fill="currentColor" /> {question.rating ?? '未评分'}
-              </span>
               <ChevronRight class="row-arrow" size={18} />
             </div>
           </a>

@@ -7,8 +7,8 @@ export type RawQuestionData = {
   levels?: string[];
   categories?: string[];
   tags?: string[];
-  rating?: number;
   createdAt: string;
+  statement?: string;
   summary?: string;
 };
 
@@ -23,8 +23,8 @@ export type QuestionData = {
   levels: string[];
   categories: string[];
   tags: string[];
-  rating: number | null;
   createdAt: string;
+  statement: string;
   summary: string;
 };
 
@@ -54,7 +54,7 @@ export function normalizeQuestionData(frontmatter: RawQuestionData): QuestionDat
     levels: frontmatter.levels ?? [],
     categories: frontmatter.categories ?? [],
     tags: frontmatter.tags ?? [],
-    rating: frontmatter.rating ?? null,
+    statement: frontmatter.statement ?? '',
     summary: frontmatter.summary ?? '',
   };
 }
