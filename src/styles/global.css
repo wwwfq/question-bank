@@ -723,6 +723,10 @@ h3 {
   color: var(--text-muted);
 }
 
+.loading-state[hidden] {
+  display: none;
+}
+
 .empty-state {
   min-height: 240px;
   display: flex;
