@@ -343,8 +343,8 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
         created_at: `${String(formData.get('created_date'))}T00:00:00+08:00`,
       };
 
-      if (!payload.sources.length || !payload.difficulties.length || !payload.levels.length || !payload.tags.length) {
-        setStatus(saveStatus, '来源、难度、适用级别和标签至少各选一项。', true);
+      if (!payload.sources.length || !payload.difficulties.length || !payload.tags.length) {
+        setStatus(saveStatus, '来源、难度和标签至少各选一项。', true);
         return;
       }
 
