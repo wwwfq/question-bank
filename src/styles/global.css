@@ -877,6 +877,10 @@ h3 {
   display: inline-flex;
 }
 
+.check-chip[hidden] {
+  display: none;
+}
+
 .check-chip input {
   position: absolute;
   opacity: 0;
