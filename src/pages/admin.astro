@@ -207,6 +207,12 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       element.classList.toggle('is-error', error);
     }
 
+    function formatLocalDate(date: Date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
+        date.getDate(),
+      ).padStart(2, '0')}`;
+    }
+
     function setCheckedValues(name: string, values: string[]) {
       questionForm
         ?.querySelectorAll<HTMLInputElement>(`input[name="${name}"]`)
@@ -371,7 +377,11 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       const dateInput = questionForm?.elements.namedItem('created_date') as HTMLInputElement | null;
       const publishedInput = questionForm?.elements.namedItem('published') as HTMLInputElement | null;
       if (idInput) idInput.value = '';
-      if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+      if (dateInput) {
+        const today = formatLocalDate(new Date());
+        dateInput.value = today;
+        dateInput.max = today;
+      }
       if (publishedInput) publishedInput.checked = true;
       if (deleteButton) deleteButton.hidden = true;
       if (editorKicker) editorKicker.textContent = '新建题目';
