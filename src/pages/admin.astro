@@ -187,6 +187,7 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
     const editIdStorageKey = 'question-bank:editing-question-id:v1';
 
     type QuestionDraft = {
+      id: string;
       title: string;
       source_id: string;
       original_url: string;
@@ -226,9 +227,10 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
     }
 
     function getDraft(): QuestionDraft | null {
-      if (!questionForm || activeId) return null;
+      if (!questionForm) return null;
       const formData = new FormData(questionForm);
       return {
+        id: String(formData.get('id') ?? activeId),
         title: String(formData.get('title') ?? ''),
         source_id: String(formData.get('source_id') ?? ''),
         original_url: String(formData.get('original_url') ?? ''),
@@ -309,22 +311,26 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       window.history.replaceState(null, '', url);
     }
 
-    function restoreDraft() {
-      if (!questionForm || activeId || getStoredEditId()) return false;
-      let draft: QuestionDraft;
+    function loadStoredDraft(): QuestionDraft | null {
       try {
         const stored = window.localStorage.getItem(draftStorageKey);
-        if (!stored) return false;
-        draft = JSON.parse(stored) as QuestionDraft;
+        if (!stored) return null;
+        const draft = JSON.parse(stored) as QuestionDraft;
         if (!draft || typeof draft !== 'object') {
           clearDraft();
-          return false;
+          return null;
         }
+        return draft;
       } catch {
         clearDraft();
-        return false;
+        return null;
       }
+    }
 
+    function applyDraft(draft: QuestionDraft) {
+      if (!questionForm) return;
+      const idInput = questionForm.elements.namedItem('id') as HTMLInputElement | null;
+      if (idInput) idInput.value = draft.id || '';
       const setValue = (name: string, value: unknown) => {
         const input = questionForm.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
         if (input) input.value = typeof value === 'string' ? value : '';
@@ -341,6 +347,15 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       setCheckedValues('tags', Array.isArray(draft.tags) ? draft.tags : []);
       const publishedInput = questionForm.elements.namedItem('published') as HTMLInputElement | null;
       if (publishedInput) publishedInput.checked = draft.published !== false;
+      const titleInput = questionForm.elements.namedItem('title') as HTMLInputElement | null;
+      if (editorTitle) editorTitle.textContent = titleInput?.value.trim() || '未命名题目';
+    }
+
+    function restoreDraft() {
+      if (!questionForm || activeId || getStoredEditId()) return false;
+      const draft = loadStoredDraft();
+      if (!draft || draft.id) return false;
+      applyDraft(draft);
       return true;
     }
 
@@ -364,9 +379,9 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       renderList();
     }
 
-    function editQuestion(question: Question) {
+    function editQuestion(question: Question, saveCurrent = true) {
       if (!questionForm) return;
-      saveDraft();
+      if (saveCurrent) saveDraft();
       activeId = question.id;
       storeEditId(question.id);
       (questionForm.elements.namedItem('id') as HTMLInputElement).value = question.id;
@@ -432,8 +447,15 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       if (pendingId) {
         const latest = questions.find((question) => question.id === pendingId);
         if (latest) {
-          editQuestion(latest);
+          const draft = loadStoredDraft();
+          editQuestion(latest, false);
+          if (draft?.id === latest.id) {
+            applyDraft(draft);
+            updatePreviews();
+          }
         } else {
+          const draft = loadStoredDraft();
+          if (draft?.id === pendingId) clearDraft();
           storeEditId('');
         }
       }
@@ -503,7 +525,7 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
         setStatus(saveStatus, error.message, true);
         return;
       }
-      if (!id) clearDraft();
+      clearDraft();
       setStatus(saveStatus, '已保存');
       await loadQuestions();
       if (!id) resetForm(false);
@@ -516,11 +538,15 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
         setStatus(saveStatus, error.message, true);
         return;
       }
+      clearDraft();
       await loadQuestions();
       resetForm();
     });
 
-    newButton?.addEventListener('click', () => resetForm());
+    newButton?.addEventListener('click', () => {
+      if (activeId) clearDraft();
+      resetForm();
+    });
     window.addEventListener('pagehide', saveDraft);
     search?.addEventListener('input', renderList);
     tagSearch?.addEventListener('input', () => {
