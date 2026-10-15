@@ -291,6 +291,10 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       }
     }
 
+    function isNewQuestionRequest() {
+      return new URL(window.location.href).searchParams.get('new') === '1';
+    }
+
     function storeEditId(id: string) {
       const url = new URL(window.location.href);
       if (id) {
@@ -464,7 +468,18 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
     async function showAuthenticated() {
       if (authPanel) authPanel.hidden = true;
       if (workspace) workspace.hidden = false;
-      resetForm(true, true);
+
+      if (isNewQuestionRequest()) {
+        clearDraft();
+        storeEditId('');
+        const url = new URL(window.location.href);
+        url.searchParams.delete('new');
+        window.history.replaceState(null, '', url);
+        resetForm(false, false);
+      } else {
+        resetForm(true, true);
+      }
+
       await loadQuestions();
     }
 
