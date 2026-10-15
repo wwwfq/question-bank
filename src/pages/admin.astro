@@ -183,6 +183,21 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
     const solutionPreview = document.querySelector<HTMLElement>('#solution-preview');
     let questions: Question[] = [];
     let activeId = '';
+    const draftStorageKey = 'question-bank:new-question-draft:v1';
+
+    type QuestionDraft = {
+      title: string;
+      source_id: string;
+      original_url: string;
+      created_date: string;
+      sources: string[];
+      difficulties: string[];
+      levels: string[];
+      tags: string[];
+      statement: string;
+      solution: string;
+      published: boolean;
+    };
 
     function setStatus(element: HTMLElement | null, message: string, error = false) {
       if (!element) return;
@@ -209,7 +224,96 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       if (solutionPreview) solutionPreview.innerHTML = renderRichText(solution?.value ?? '');
     }
 
-    function resetForm() {
+    function getDraft(): QuestionDraft | null {
+      if (!questionForm || activeId) return null;
+      const formData = new FormData(questionForm);
+      return {
+        title: String(formData.get('title') ?? ''),
+        source_id: String(formData.get('source_id') ?? ''),
+        original_url: String(formData.get('original_url') ?? ''),
+        created_date: String(formData.get('created_date') ?? ''),
+        sources: getValues(formData, 'sources'),
+        difficulties: getValues(formData, 'difficulties'),
+        levels: getValues(formData, 'levels'),
+        tags: getValues(formData, 'tags'),
+        statement: String(formData.get('statement') ?? ''),
+        solution: String(formData.get('solution') ?? ''),
+        published: formData.get('published') === 'on',
+      };
+    }
+
+    function hasDraftContent(draft: QuestionDraft) {
+      return Boolean(
+        draft.title.trim() ||
+          draft.source_id.trim() ||
+          draft.original_url.trim() ||
+          draft.sources.length ||
+          draft.difficulties.length ||
+          draft.levels.length ||
+          draft.tags.length ||
+          draft.statement.trim() ||
+          draft.solution.trim(),
+      );
+    }
+
+    function saveDraft() {
+      const draft = getDraft();
+      if (!draft) return;
+      try {
+        if (hasDraftContent(draft)) {
+          window.localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+        } else {
+          window.localStorage.removeItem(draftStorageKey);
+        }
+      } catch {
+        // The editor still works when browser storage is unavailable.
+      }
+    }
+
+    function clearDraft() {
+      try {
+        window.localStorage.removeItem(draftStorageKey);
+      } catch {
+        // Ignore unavailable browser storage.
+      }
+    }
+
+    function restoreDraft() {
+      if (!questionForm || activeId) return false;
+      let draft: QuestionDraft;
+      try {
+        const stored = window.localStorage.getItem(draftStorageKey);
+        if (!stored) return false;
+        draft = JSON.parse(stored) as QuestionDraft;
+        if (!draft || typeof draft !== 'object') {
+          clearDraft();
+          return false;
+        }
+      } catch {
+        clearDraft();
+        return false;
+      }
+
+      const setValue = (name: string, value: unknown) => {
+        const input = questionForm.elements.namedItem(name) as HTMLInputElement | HTMLTextAreaElement | null;
+        if (input) input.value = typeof value === 'string' ? value : '';
+      };
+      setValue('title', draft.title);
+      setValue('source_id', draft.source_id);
+      setValue('original_url', draft.original_url);
+      setValue('created_date', draft.created_date);
+      setValue('statement', draft.statement);
+      setValue('solution', draft.solution);
+      setCheckedValues('sources', Array.isArray(draft.sources) ? draft.sources : []);
+      setCheckedValues('difficulties', Array.isArray(draft.difficulties) ? draft.difficulties : []);
+      setCheckedValues('levels', Array.isArray(draft.levels) ? draft.levels : []);
+      setCheckedValues('tags', Array.isArray(draft.tags) ? draft.tags : []);
+      const publishedInput = questionForm.elements.namedItem('published') as HTMLInputElement | null;
+      if (publishedInput) publishedInput.checked = draft.published !== false;
+      return true;
+    }
+
+    function resetForm(restoreSavedDraft = true) {
       activeId = '';
       questionForm?.reset();
       const idInput = questionForm?.elements.namedItem('id') as HTMLInputElement | null;
@@ -219,15 +323,18 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
       if (publishedInput) publishedInput.checked = true;
       if (deleteButton) deleteButton.hidden = true;
-      if (editorTitle) editorTitle.textContent = '未命名题目';
       if (editorKicker) editorKicker.textContent = '新建题目';
-      setStatus(saveStatus, '');
+      const restored = restoreSavedDraft && restoreDraft();
+      const titleInput = questionForm?.elements.namedItem('title') as HTMLInputElement | null;
+      if (editorTitle) editorTitle.textContent = titleInput?.value.trim() || '未命名题目';
+      setStatus(saveStatus, restored ? '已恢复未保存的草稿。' : '');
       updatePreviews();
       renderList();
     }
 
     function editQuestion(question: Question) {
       if (!questionForm) return;
+      saveDraft();
       activeId = question.id;
       (questionForm.elements.namedItem('id') as HTMLInputElement).value = question.id;
       (questionForm.elements.namedItem('title') as HTMLInputElement).value = question.title;
@@ -323,6 +430,7 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       const title = questionForm.elements.namedItem('title') as HTMLInputElement | null;
       if (editorTitle) editorTitle.textContent = title?.value.trim() || '未命名题目';
       updatePreviews();
+      saveDraft();
     });
 
     questionForm?.addEventListener('submit', async (event) => {
@@ -357,9 +465,10 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
         setStatus(saveStatus, error.message, true);
         return;
       }
+      if (!id) clearDraft();
       setStatus(saveStatus, '已保存');
       await loadQuestions();
-      if (!id) resetForm();
+      if (!id) resetForm(false);
     });
 
     deleteButton?.addEventListener('click', async () => {
@@ -373,7 +482,8 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       resetForm();
     });
 
-    newButton?.addEventListener('click', resetForm);
+    newButton?.addEventListener('click', () => resetForm());
+    window.addEventListener('pagehide', saveDraft);
     search?.addEventListener('input', renderList);
     tagSearch?.addEventListener('input', () => {
       const query = tagSearch.value.trim().toLowerCase();
