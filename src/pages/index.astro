@@ -236,6 +236,7 @@ const ratingOptions = difficultyOptions
     import { supabase } from '../lib/supabase';
     import { primaryValue, type Question } from '../lib/questions';
     import { difficultyOptions } from '../lib/options';
+    import { renderRichText } from '../lib/markdown';
 
     type Facet = 'source' | 'difficulty' | 'level' | 'tag';
     type SearchField = 'title' | 'statement' | 'solution' | 'source' | 'level' | 'tag' | 'difficulty';
@@ -301,6 +302,12 @@ const ratingOptions = difficultyOptions
       container.append(chip);
     }
 
+    function plainText(markdown: string): string {
+      const node = document.createElement('div');
+      node.innerHTML = renderRichText(markdown).replace(/<\/(p|li|h[1-6])>/g, '</$1> ');
+      return (node.textContent ?? '').replace(/\s+/g, ' ').trim();
+    }
+
     function buildQuestionRow(question: Question) {
       const row = document.createElement('a');
       row.className = 'question-row';
@@ -313,31 +320,27 @@ const ratingOptions = difficultyOptions
       const title = document.createElement('h2');
       title.textContent = question.title;
       titleLine.append(title);
-      if (question.source_id) {
-        const sourceId = document.createElement('span');
-        sourceId.className = 'source-id';
-        sourceId.textContent = `#${question.source_id}`;
-        titleLine.append(sourceId);
-      }
       main.append(titleLine);
 
-      const chips = document.createElement('div');
-      chips.className = 'tag-list';
-      question.levels.forEach((value) => appendChip(chips, value, 'level-chip'));
-      question.tags.slice(0, 4).forEach((value) => appendChip(chips, value, 'tag-chip'));
-      main.append(chips);
+      if (question.solution) {
+        const solutionPreview = document.createElement('p');
+        solutionPreview.className = 'question-solution-preview';
+        solutionPreview.textContent = plainText(question.solution);
+        main.append(solutionPreview);
+      }
 
       const meta = document.createElement('div');
       meta.className = 'question-meta';
       const difficulty = document.createElement('span');
       difficulty.className = 'difficulty';
       difficulty.textContent = primaryValue(question.difficulties, '未分类');
-      const source = document.createElement('span');
-      source.textContent = primaryValue(question.sources, '其他');
       const arrow = document.createElement('span');
       arrow.className = 'row-arrow';
       arrow.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>';
-      meta.append(difficulty, source, arrow);
+      meta.append(difficulty);
+      question.levels.forEach((value) => appendChip(meta, value, 'level-chip'));
+      question.tags.slice(0, 4).forEach((value) => appendChip(meta, value, 'tag-chip'));
+      meta.append(arrow);
       row.append(main, meta);
       return row;
     }
