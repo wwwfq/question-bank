@@ -89,7 +89,6 @@ import {
   <script>
     import { supabase } from '../lib/supabase';
     import { primaryValue, type Question } from '../lib/questions';
-    import { renderRichText } from '../lib/markdown';
 
     const base = import.meta.env.BASE_URL;
     const searchInput = document.querySelector<HTMLInputElement>('#search');
@@ -130,14 +129,6 @@ import {
         titleLine.append(sourceId);
       }
       main.append(titleLine);
-
-      const summaryValue = question.statement || question.solution;
-      if (summaryValue) {
-        const summary = document.createElement('div');
-        summary.className = 'question-summary';
-        summary.innerHTML = renderRichText(summaryValue);
-        main.append(summary);
-      }
 
       const chips = document.createElement('div');
       chips.className = 'tag-list';
