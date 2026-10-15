@@ -242,6 +242,7 @@ const ratingOptions = difficultyOptions
     type SearchField = 'title' | 'statement' | 'solution' | 'source' | 'level' | 'tag' | 'difficulty';
     type MatchMode = 'all' | 'any';
     type SortMode = 'newest' | 'oldest' | 'difficulty-asc' | 'difficulty-desc' | 'source-asc' | 'source-desc';
+    type QuestionWithExcerpt = Question & { solutionExcerpt: string };
 
     const base = import.meta.env.BASE_URL;
     const searchInput = document.querySelector<HTMLInputElement>('#search');
@@ -259,7 +260,8 @@ const ratingOptions = difficultyOptions
     const facetInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-facet]'));
     const tagMatchInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="tag-match"]'));
     const menuSearchInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-menu-search]'));
-    let questions: Question[] = [];
+    let questions: QuestionWithExcerpt[] = [];
+    let searchTimer: number | undefined;
 
     const facetSummaryLabels: Record<Facet, string> = {
       source: '全部来源',
@@ -322,10 +324,10 @@ const ratingOptions = difficultyOptions
       titleLine.append(title);
       main.append(titleLine);
 
-      if (question.solution) {
+      if (question.solutionExcerpt) {
         const solutionPreview = document.createElement('p');
         solutionPreview.className = 'question-solution-preview';
-        solutionPreview.textContent = plainText(question.solution);
+        solutionPreview.textContent = question.solutionExcerpt;
         main.append(solutionPreview);
       }
 
@@ -544,12 +546,16 @@ const ratingOptions = difficultyOptions
         return;
       }
 
-      questions = data ?? [];
+      questions = (data ?? []).map((question) => ({
+        ...question,
+        solutionExcerpt: plainText(question.solution),
+      }));
       updateStats();
       updateResults();
     }
 
     function clearFilters() {
+      window.clearTimeout(searchTimer);
       if (searchInput) searchInput.value = '';
       scopeInputs.forEach((input) => {
         input.checked = true;
@@ -571,7 +577,10 @@ const ratingOptions = difficultyOptions
       updateResults();
     }
 
-    searchInput?.addEventListener('input', updateResults);
+    searchInput?.addEventListener('input', () => {
+      window.clearTimeout(searchTimer);
+      searchTimer = window.setTimeout(updateResults, 150);
+    });
     sortFilter?.addEventListener('change', updateResults);
     scopeInputs.forEach((input) => input.addEventListener('change', updateResults));
     facetInputs.forEach((input) => input.addEventListener('change', () => {
