@@ -447,7 +447,7 @@ h3 {
 
 .range-row {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 10px;
 }
 
@@ -501,7 +501,7 @@ h3 {
 .filter-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
 }
 
@@ -511,6 +511,20 @@ h3 {
   border: 1px solid var(--border);
   border-radius: 6px;
   background: var(--surface-muted);
+}
+
+.menu-mode {
+  width: 100%;
+  margin-top: 9px;
+}
+
+.menu-mode .segment {
+  flex: 1;
+}
+
+.menu-mode .segment span {
+  flex: 1;
+  justify-content: center;
 }
 
 .segment {
@@ -1253,10 +1267,6 @@ h3 {
     grid-template-columns: 1fr 1fr;
   }
 
-  .range-row {
-    grid-template-columns: 1fr 1fr;
-  }
-
   .question-row {
     grid-template-columns: 1fr;
     gap: 16px;
@@ -1320,10 +1330,6 @@ h3 {
   }
 
   .facet-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .range-row {
     grid-template-columns: 1fr;
   }
 

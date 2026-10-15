@@ -82,22 +82,6 @@ const ratingOptions = difficultyOptions
           <input type="checkbox" data-scope="solution" checked />
           <span>解题思路</span>
         </label>
-        <label class="check-chip scope-chip">
-          <input type="checkbox" data-scope="source" checked />
-          <span>来源</span>
-        </label>
-        <label class="check-chip scope-chip">
-          <input type="checkbox" data-scope="level" checked />
-          <span>级别</span>
-        </label>
-        <label class="check-chip scope-chip">
-          <input type="checkbox" data-scope="tag" checked />
-          <span>标签</span>
-        </label>
-        <label class="check-chip scope-chip">
-          <input type="checkbox" data-scope="difficulty" checked />
-          <span>难度</span>
-        </label>
       </div>
 
       <div class="facet-grid">
@@ -182,6 +166,16 @@ const ratingOptions = difficultyOptions
               <Search size={14} />
               <input type="search" data-menu-search="tag" placeholder="搜索标签" autocomplete="off" />
             </label>
+            <div class="segmented menu-mode" role="group" aria-label="标签组合逻辑">
+              <label class="segment">
+                <input type="radio" name="tag-match" value="all" />
+                <span>全部满足</span>
+              </label>
+              <label class="segment">
+                <input type="radio" name="tag-match" value="any" checked />
+                <span>任一满足</span>
+              </label>
+            </div>
             <div class="menu-options" data-menu-options="tag">
               {tagOptions.map((tag) => (
                 <label class="check-chip menu-chip">
@@ -209,27 +203,9 @@ const ratingOptions = difficultyOptions
             </select>
           </div>
         </fieldset>
-        <fieldset class="range-field">
-          <legend class="filter-label">收录日期</legend>
-          <div class="range-controls">
-            <input id="date-from" type="date" aria-label="起始日期" />
-            <span class="range-separator">—</span>
-            <input id="date-to" type="date" aria-label="结束日期" />
-          </div>
-        </fieldset>
       </div>
 
       <div class="filter-footer">
-        <div class="segmented" role="group" aria-label="多选组合逻辑">
-          <label class="segment">
-            <input type="radio" name="match-mode" value="all" checked />
-            <span>全部满足</span>
-          </label>
-          <label class="segment">
-            <input type="radio" name="match-mode" value="any" />
-            <span>任一满足</span>
-          </label>
-        </div>
         <button class="clear-button" id="clear-filters" type="button">
           <RotateCcw size={15} />
           <span>清空筛选</span>
@@ -272,8 +248,6 @@ const ratingOptions = difficultyOptions
     const sortLabel = document.querySelector<HTMLElement>('#sort-label');
     const ratingMin = document.querySelector<HTMLSelectElement>('#rating-min');
     const ratingMax = document.querySelector<HTMLSelectElement>('#rating-max');
-    const dateFrom = document.querySelector<HTMLInputElement>('#date-from');
-    const dateTo = document.querySelector<HTMLInputElement>('#date-to');
     const clearButton = document.querySelector<HTMLButtonElement>('#clear-filters');
     const questionList = document.querySelector<HTMLElement>('#question-list');
     const resultCount = document.querySelector<HTMLElement>('#result-count');
@@ -282,7 +256,7 @@ const ratingOptions = difficultyOptions
     const retryButton = document.querySelector<HTMLButtonElement>('#retry-button');
     const scopeInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-scope]'));
     const facetInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-facet]'));
-    const matchModeInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="match-mode"]'));
+    const tagMatchInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="tag-match"]'));
     const menuSearchInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-menu-search]'));
     let questions: Question[] = [];
 
@@ -385,10 +359,10 @@ const ratingOptions = difficultyOptions
         .map((input) => input.value);
     }
 
-    function getMatchMode(): MatchMode {
-      return document.querySelector<HTMLInputElement>('input[name="match-mode"]:checked')?.value === 'any'
-        ? 'any'
-        : 'all';
+    function getTagMatchMode(): MatchMode {
+      return document.querySelector<HTMLInputElement>('input[name="tag-match"]:checked')?.value === 'all'
+        ? 'all'
+        : 'any';
     }
 
     function getSearchTokens(query: string) {
@@ -465,22 +439,6 @@ const ratingOptions = difficultyOptions
       return ratings.some((rating) => rating >= min && rating <= max);
     }
 
-    function dateKey(value: string): string {
-      const date = new Date(value);
-      if (Number.isNaN(date.getTime())) return '';
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-
-    function matchesDateRange(question: Question, from: string, to: string): boolean {
-      if (!from && !to) return true;
-      const key = dateKey(question.created_at);
-      if (!key) return false;
-      return (!from || key >= from) && (!to || key <= to);
-    }
-
     function difficultyRank(question: Question): number {
       const ranks = question.difficulties
         .map((value) => difficultyOptions.indexOf(value))
@@ -537,25 +495,22 @@ const ratingOptions = difficultyOptions
 
     function updateResults() {
       const query = searchInput?.value.trim() ?? '';
-      const mode = getMatchMode();
+      const tagMode = getTagMatchMode();
       const sources = getSelectedValues('source');
       const difficulties = getSelectedValues('difficulty');
       const levels = getSelectedValues('level');
       const tags = getSelectedValues('tag');
       const minRating = ratingMin?.value ?? '';
       const maxRating = ratingMax?.value ?? '';
-      const fromDate = dateFrom?.value ?? '';
-      const toDate = dateTo?.value ?? '';
       const sortMode = (sortFilter?.value ?? 'newest') as SortMode;
       const visible = questions
         .filter((question) => (
           matchesKeywords(question, query) &&
-          matchesFacet(question.sources, sources, mode) &&
-          matchesFacet(question.difficulties, difficulties, mode) &&
-          matchesFacet(question.levels, levels, mode) &&
-          matchesFacet(question.tags, tags, mode) &&
-          matchesRatingRange(question, minRating, maxRating) &&
-          matchesDateRange(question, fromDate, toDate)
+          matchesFacet(question.sources, sources, 'any') &&
+          matchesFacet(question.difficulties, difficulties, 'any') &&
+          matchesFacet(question.levels, levels, 'any') &&
+          matchesFacet(question.tags, tags, tagMode) &&
+          matchesRatingRange(question, minRating, maxRating)
         ))
         .sort((a, b) => compareQuestions(a, b, sortMode));
 
@@ -599,13 +554,11 @@ const ratingOptions = difficultyOptions
       facetInputs.forEach((input) => {
         input.checked = false;
       });
-      matchModeInputs.forEach((input) => {
-        input.checked = input.value === 'all';
+      tagMatchInputs.forEach((input) => {
+        input.checked = input.value === 'any';
       });
       if (ratingMin) ratingMin.value = '';
       if (ratingMax) ratingMax.value = '';
-      if (dateFrom) dateFrom.value = '';
-      if (dateTo) dateTo.value = '';
       if (sortFilter) sortFilter.value = 'newest';
       menuSearchInputs.forEach((input) => {
         input.value = '';
@@ -622,12 +575,10 @@ const ratingOptions = difficultyOptions
       updateFacetSummaries();
       updateResults();
     }));
-    matchModeInputs.forEach((input) => input.addEventListener('change', updateResults));
+    tagMatchInputs.forEach((input) => input.addEventListener('change', updateResults));
     menuSearchInputs.forEach((input) => input.addEventListener('input', () => filterMenuOptions(input)));
     ratingMin?.addEventListener('change', updateResults);
     ratingMax?.addEventListener('change', updateResults);
-    dateFrom?.addEventListener('change', updateResults);
-    dateTo?.addEventListener('change', updateResults);
     clearButton?.addEventListener('click', clearFilters);
     retryButton?.addEventListener('click', () => void loadQuestions());
 
