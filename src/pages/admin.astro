@@ -184,6 +184,7 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
     let questions: Question[] = [];
     let activeId = '';
     const draftStorageKey = 'question-bank:new-question-draft:v1';
+    const editIdStorageKey = 'question-bank:editing-question-id:v1';
 
     type QuestionDraft = {
       title: string;
@@ -278,8 +279,38 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       }
     }
 
+    function getStoredEditId(): string {
+      const urlId = new URL(window.location.href).searchParams.get('id') ?? '';
+      if (urlId) return urlId;
+      try {
+        return window.sessionStorage.getItem(editIdStorageKey) ?? '';
+      } catch {
+        return '';
+      }
+    }
+
+    function storeEditId(id: string) {
+      const url = new URL(window.location.href);
+      if (id) {
+        url.searchParams.set('id', id);
+        try {
+          window.sessionStorage.setItem(editIdStorageKey, id);
+        } catch {
+          // Ignore unavailable browser storage.
+        }
+      } else {
+        url.searchParams.delete('id');
+        try {
+          window.sessionStorage.removeItem(editIdStorageKey);
+        } catch {
+          // Ignore unavailable browser storage.
+        }
+      }
+      window.history.replaceState(null, '', url);
+    }
+
     function restoreDraft() {
-      if (!questionForm || activeId) return false;
+      if (!questionForm || activeId || getStoredEditId()) return false;
       let draft: QuestionDraft;
       try {
         const stored = window.localStorage.getItem(draftStorageKey);
@@ -313,8 +344,9 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       return true;
     }
 
-    function resetForm(restoreSavedDraft = true) {
+    function resetForm(restoreSavedDraft = true, keepEditSelection = false) {
       activeId = '';
+      if (!keepEditSelection) storeEditId('');
       questionForm?.reset();
       const idInput = questionForm?.elements.namedItem('id') as HTMLInputElement | null;
       const dateInput = questionForm?.elements.namedItem('created_date') as HTMLInputElement | null;
@@ -336,6 +368,7 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       if (!questionForm) return;
       saveDraft();
       activeId = question.id;
+      storeEditId(question.id);
       (questionForm.elements.namedItem('id') as HTMLInputElement).value = question.id;
       (questionForm.elements.namedItem('title') as HTMLInputElement).value = question.title;
       (questionForm.elements.namedItem('source_id') as HTMLInputElement).value = question.source_id ?? '';
@@ -395,16 +428,21 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       }
       questions = data ?? [];
       renderList();
-      if (activeId) {
-        const latest = questions.find((question) => question.id === activeId);
-        if (latest) editQuestion(latest);
+      const pendingId = getStoredEditId();
+      if (pendingId) {
+        const latest = questions.find((question) => question.id === pendingId);
+        if (latest) {
+          editQuestion(latest);
+        } else {
+          storeEditId('');
+        }
       }
     }
 
     async function showAuthenticated() {
       if (authPanel) authPanel.hidden = true;
       if (workspace) workspace.hidden = false;
-      resetForm();
+      resetForm(true, true);
       await loadQuestions();
     }
 
