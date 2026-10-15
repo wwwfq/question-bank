@@ -242,7 +242,7 @@ const ratingOptions = difficultyOptions
     type SearchField = 'title' | 'statement' | 'solution' | 'source' | 'level' | 'tag' | 'difficulty';
     type MatchMode = 'all' | 'any';
     type SortMode = 'newest' | 'oldest' | 'difficulty-asc' | 'difficulty-desc' | 'source-asc' | 'source-desc';
-    type QuestionWithExcerpt = Question & { solutionExcerpt: string };
+    type QuestionWithExcerpt = Question & { solutionExcerptHtml: string };
 
     const base = import.meta.env.BASE_URL;
     const searchInput = document.querySelector<HTMLInputElement>('#search');
@@ -304,10 +304,13 @@ const ratingOptions = difficultyOptions
       container.append(chip);
     }
 
-    function plainText(markdown: string): string {
+    function excerptHtml(markdown: string): string {
       const node = document.createElement('div');
-      node.innerHTML = renderRichText(markdown).replace(/<\/(p|li|h[1-6])>/g, '</$1> ');
-      return (node.textContent ?? '').replace(/\s+/g, ' ').trim();
+      node.innerHTML = renderRichText(markdown);
+      const blocks = Array.from(node.querySelectorAll('p, li, h1, h2, h3, h4, blockquote, td, th, pre'));
+      const firstBlock = blocks.find((block) => block.textContent?.trim());
+      const source = firstBlock ?? node;
+      return source.innerHTML.trim();
     }
 
     function buildQuestionRow(question: Question) {
@@ -324,10 +327,10 @@ const ratingOptions = difficultyOptions
       titleLine.append(title);
       main.append(titleLine);
 
-      if (question.solutionExcerpt) {
+      if (question.solutionExcerptHtml) {
         const solutionPreview = document.createElement('p');
         solutionPreview.className = 'question-solution-preview';
-        solutionPreview.textContent = question.solutionExcerpt;
+        solutionPreview.innerHTML = question.solutionExcerptHtml;
         main.append(solutionPreview);
       }
 
@@ -548,7 +551,7 @@ const ratingOptions = difficultyOptions
 
       questions = (data ?? []).map((question) => ({
         ...question,
-        solutionExcerpt: plainText(question.solution),
+        solutionExcerptHtml: excerptHtml(question.solution),
       }));
       updateStats();
       updateResults();
