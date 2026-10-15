@@ -6,6 +6,7 @@ export const sourceOptions = [
   '牛客',
   'AtCoder',
   'USACO',
+  'COCI 克罗地亚',
   'ICPC',
   'CCPC',
   '蓝桥杯',
