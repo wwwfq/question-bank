@@ -5,6 +5,7 @@ export const sourceOptions = [
   'Codeforces',
   '牛客',
   'AtCoder',
+  'USACO',
   'ICPC',
   'CCPC',
   '蓝桥杯',
