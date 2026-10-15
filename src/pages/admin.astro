@@ -403,7 +403,7 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
       (questionForm.elements.namedItem('source_id') as HTMLInputElement).value = question.source_id ?? '';
       (questionForm.elements.namedItem('original_url') as HTMLInputElement).value = question.original_url ?? '';
       (questionForm.elements.namedItem('created_date') as HTMLInputElement).value =
-        question.created_at.slice(0, 10);
+        formatLocalDate(new Date(question.created_at));
       (questionForm.elements.namedItem('statement') as HTMLTextAreaElement).value = question.statement;
       (questionForm.elements.namedItem('solution') as HTMLTextAreaElement).value = question.solution;
       (questionForm.elements.namedItem('published') as HTMLInputElement).checked = question.published;
