@@ -1,12 +1,26 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { BookMarked, ChevronRight, Filter, Search, Tag } from '@lucide/astro';
+import {
+  ArrowUpDown,
+  BookMarked,
+  CalendarRange,
+  ChevronDown,
+  Filter,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Tag,
+} from '@lucide/astro';
 import {
   difficultyOptions,
   levelOptions,
   sourceOptions,
   tagOptions,
 } from '../lib/options';
+
+const ratingOptions = difficultyOptions
+  .filter((value) => value.startsWith('*'))
+  .map((value) => value.slice(1));
 ---
 
 <BaseLayout>
@@ -34,42 +48,198 @@ import {
     </div>
 
     <div class="filter-bar">
-      <label class="search-box">
-        <Search size={18} />
-        <span class="sr-only">搜索题目</span>
-        <input id="search" type="search" placeholder="搜索题目、题意或标签" autocomplete="off" />
-      </label>
-      <div class="select-wrap">
-        <Filter size={16} />
-        <select id="source-filter" aria-label="按来源筛选">
-          <option value="">全部来源</option>
-          {sourceOptions.map((source) => <option value={source}>{source}</option>)}
-        </select>
+      <div class="filter-primary">
+        <label class="search-box">
+          <Search size={18} />
+          <span class="sr-only">搜索题目</span>
+          <input id="search" type="search" placeholder="搜索标题、题意、解题思路、来源、级别或标签" autocomplete="off" />
+        </label>
+        <label class="sort-box">
+          <ArrowUpDown size={16} />
+          <span class="sr-only">排序方式</span>
+          <select id="sort-filter" aria-label="排序方式">
+            <option value="newest">最新收录</option>
+            <option value="oldest">最早收录</option>
+            <option value="difficulty-asc">难度从低到高</option>
+            <option value="difficulty-desc">难度从高到低</option>
+            <option value="source-asc">来源 A-Z</option>
+            <option value="source-desc">来源 Z-A</option>
+          </select>
+        </label>
       </div>
-      <div class="select-wrap">
-        <select id="difficulty-filter" aria-label="按难度筛选">
-          <option value="">全部难度</option>
-          {difficultyOptions.map((difficulty) => <option value={difficulty}>{difficulty}</option>)}
-        </select>
+
+      <div class="scope-row">
+        <span class="filter-label">搜索范围</span>
+        <label class="check-chip scope-chip">
+          <input type="checkbox" data-scope="title" checked />
+          <span>标题</span>
+        </label>
+        <label class="check-chip scope-chip">
+          <input type="checkbox" data-scope="statement" checked />
+          <span>题意</span>
+        </label>
+        <label class="check-chip scope-chip">
+          <input type="checkbox" data-scope="solution" checked />
+          <span>解题思路</span>
+        </label>
+        <label class="check-chip scope-chip">
+          <input type="checkbox" data-scope="source" checked />
+          <span>来源</span>
+        </label>
+        <label class="check-chip scope-chip">
+          <input type="checkbox" data-scope="level" checked />
+          <span>级别</span>
+        </label>
+        <label class="check-chip scope-chip">
+          <input type="checkbox" data-scope="tag" checked />
+          <span>标签</span>
+        </label>
+        <label class="check-chip scope-chip">
+          <input type="checkbox" data-scope="difficulty" checked />
+          <span>难度</span>
+        </label>
       </div>
-      <div class="select-wrap">
-        <select id="level-filter" aria-label="按适用级别筛选">
-          <option value="">全部级别</option>
-          {levelOptions.map((level) => <option value={level}>{level}</option>)}
-        </select>
+
+      <div class="facet-grid">
+        <details class="filter-menu" data-menu="source">
+          <summary>
+            <SlidersHorizontal size={15} />
+            <span class="filter-menu-name">来源</span>
+            <span class="filter-menu-value" data-menu-summary="source">全部来源</span>
+            <ChevronDown size={16} class="menu-chevron" />
+          </summary>
+          <div class="filter-menu-panel">
+            <label class="menu-search">
+              <Search size={14} />
+              <input type="search" data-menu-search="source" placeholder="搜索来源" autocomplete="off" />
+            </label>
+            <div class="menu-options" data-menu-options="source">
+              {sourceOptions.map((source) => (
+                <label class="check-chip menu-chip">
+                  <input type="checkbox" data-facet="source" value={source} />
+                  <span>{source}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </details>
+
+        <details class="filter-menu" data-menu="difficulty">
+          <summary>
+            <Filter size={15} />
+            <span class="filter-menu-name">难度</span>
+            <span class="filter-menu-value" data-menu-summary="difficulty">全部难度</span>
+            <ChevronDown size={16} class="menu-chevron" />
+          </summary>
+          <div class="filter-menu-panel">
+            <label class="menu-search">
+              <Search size={14} />
+              <input type="search" data-menu-search="difficulty" placeholder="搜索难度" autocomplete="off" />
+            </label>
+            <div class="menu-options" data-menu-options="difficulty">
+              {difficultyOptions.map((difficulty) => (
+                <label class="check-chip menu-chip">
+                  <input type="checkbox" data-facet="difficulty" value={difficulty} />
+                  <span>{difficulty}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </details>
+
+        <details class="filter-menu" data-menu="level">
+          <summary>
+            <Filter size={15} />
+            <span class="filter-menu-name">级别</span>
+            <span class="filter-menu-value" data-menu-summary="level">全部级别</span>
+            <ChevronDown size={16} class="menu-chevron" />
+          </summary>
+          <div class="filter-menu-panel">
+            <label class="menu-search">
+              <Search size={14} />
+              <input type="search" data-menu-search="level" placeholder="搜索级别" autocomplete="off" />
+            </label>
+            <div class="menu-options" data-menu-options="level">
+              {levelOptions.map((level) => (
+                <label class="check-chip menu-chip">
+                  <input type="checkbox" data-facet="level" value={level} />
+                  <span>{level}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </details>
+
+        <details class="filter-menu" data-menu="tag">
+          <summary>
+            <Tag size={15} />
+            <span class="filter-menu-name">标签</span>
+            <span class="filter-menu-value" data-menu-summary="tag">全部标签</span>
+            <ChevronDown size={16} class="menu-chevron" />
+          </summary>
+          <div class="filter-menu-panel">
+            <label class="menu-search">
+              <Search size={14} />
+              <input type="search" data-menu-search="tag" placeholder="搜索标签" autocomplete="off" />
+            </label>
+            <div class="menu-options" data-menu-options="tag">
+              {tagOptions.map((tag) => (
+                <label class="check-chip menu-chip">
+                  <input type="checkbox" data-facet="tag" value={tag} />
+                  <span>{tag}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </details>
       </div>
-      <div class="select-wrap">
-        <Tag size={16} />
-        <select id="tag-filter" aria-label="按标签筛选">
-          <option value="">全部标签</option>
-          {tagOptions.map((tag) => <option value={tag}>{tag}</option>)}
-        </select>
+
+      <div class="range-row">
+        <fieldset class="range-field">
+          <legend class="filter-label"><CalendarRange size={14} />Rating</legend>
+          <div class="range-controls">
+            <select id="rating-min" aria-label="最低 Rating">
+              <option value="">最低</option>
+              {ratingOptions.map((value) => <option value={value}>*{value}</option>)}
+            </select>
+            <span class="range-separator">—</span>
+            <select id="rating-max" aria-label="最高 Rating">
+              <option value="">最高</option>
+              {ratingOptions.map((value) => <option value={value}>*{value}</option>)}
+            </select>
+          </div>
+        </fieldset>
+        <fieldset class="range-field">
+          <legend class="filter-label">收录日期</legend>
+          <div class="range-controls">
+            <input id="date-from" type="date" aria-label="起始日期" />
+            <span class="range-separator">—</span>
+            <input id="date-to" type="date" aria-label="结束日期" />
+          </div>
+        </fieldset>
+      </div>
+
+      <div class="filter-footer">
+        <div class="segmented" role="group" aria-label="多选组合逻辑">
+          <label class="segment">
+            <input type="radio" name="match-mode" value="all" checked />
+            <span>全部满足</span>
+          </label>
+          <label class="segment">
+            <input type="radio" name="match-mode" value="any" />
+            <span>任一满足</span>
+          </label>
+        </div>
+        <button class="clear-button" id="clear-filters" type="button">
+          <RotateCcw size={15} />
+          <span>清空筛选</span>
+        </button>
       </div>
     </div>
 
     <div class="list-header">
       <span id="result-count">正在加载题目...</span>
-      <span>按收录时间排序</span>
+      <span id="sort-label">按最新收录排序</span>
     </div>
 
     <div class="question-list" id="question-list" aria-live="polite"></div>
@@ -89,19 +259,66 @@ import {
   <script>
     import { supabase } from '../lib/supabase';
     import { primaryValue, type Question } from '../lib/questions';
+    import { difficultyOptions } from '../lib/options';
+
+    type Facet = 'source' | 'difficulty' | 'level' | 'tag';
+    type SearchField = 'title' | 'statement' | 'solution' | 'source' | 'level' | 'tag' | 'difficulty';
+    type MatchMode = 'all' | 'any';
+    type SortMode = 'newest' | 'oldest' | 'difficulty-asc' | 'difficulty-desc' | 'source-asc' | 'source-desc';
 
     const base = import.meta.env.BASE_URL;
     const searchInput = document.querySelector<HTMLInputElement>('#search');
-    const sourceFilter = document.querySelector<HTMLSelectElement>('#source-filter');
-    const difficultyFilter = document.querySelector<HTMLSelectElement>('#difficulty-filter');
-    const levelFilter = document.querySelector<HTMLSelectElement>('#level-filter');
-    const tagFilter = document.querySelector<HTMLSelectElement>('#tag-filter');
+    const sortFilter = document.querySelector<HTMLSelectElement>('#sort-filter');
+    const sortLabel = document.querySelector<HTMLElement>('#sort-label');
+    const ratingMin = document.querySelector<HTMLSelectElement>('#rating-min');
+    const ratingMax = document.querySelector<HTMLSelectElement>('#rating-max');
+    const dateFrom = document.querySelector<HTMLInputElement>('#date-from');
+    const dateTo = document.querySelector<HTMLInputElement>('#date-to');
+    const clearButton = document.querySelector<HTMLButtonElement>('#clear-filters');
     const questionList = document.querySelector<HTMLElement>('#question-list');
     const resultCount = document.querySelector<HTMLElement>('#result-count');
     const emptyState = document.querySelector<HTMLElement>('#empty-state');
     const loadError = document.querySelector<HTMLElement>('#load-error');
     const retryButton = document.querySelector<HTMLButtonElement>('#retry-button');
+    const scopeInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-scope]'));
+    const facetInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-facet]'));
+    const matchModeInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[name="match-mode"]'));
+    const menuSearchInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-menu-search]'));
     let questions: Question[] = [];
+
+    const facetSummaryLabels: Record<Facet, string> = {
+      source: '全部来源',
+      difficulty: '全部难度',
+      level: '全部级别',
+      tag: '全部标签',
+    };
+
+    const fieldAliases: Record<string, SearchField> = {
+      title: 'title',
+      标题: 'title',
+      statement: 'statement',
+      题意: 'statement',
+      solution: 'solution',
+      思路: 'solution',
+      解题思路: 'solution',
+      source: 'source',
+      来源: 'source',
+      level: 'level',
+      级别: 'level',
+      tag: 'tag',
+      标签: 'tag',
+      difficulty: 'difficulty',
+      难度: 'difficulty',
+    };
+
+    const sortLabels: Record<SortMode, string> = {
+      newest: '按最新收录排序',
+      oldest: '按最早收录排序',
+      'difficulty-asc': '按难度从低到高排序',
+      'difficulty-desc': '按难度从高到低排序',
+      'source-asc': '按来源 A-Z 排序',
+      'source-desc': '按来源 Z-A 排序',
+    };
 
     function appendChip(container: HTMLElement, text: string, className: string) {
       const chip = document.createElement('span');
@@ -162,31 +379,185 @@ import {
       if (tagCount) tagCount.textContent = String(tags.size);
     }
 
-    function updateResults() {
-      const query = searchInput?.value.trim().toLowerCase() ?? '';
-      const source = sourceFilter?.value ?? '';
-      const difficulty = difficultyFilter?.value ?? '';
-      const level = levelFilter?.value ?? '';
-      const tag = tagFilter?.value ?? '';
-      const visible = questions.filter((question) => {
-        const searchText = [
-          question.title,
-          question.statement,
-          question.solution,
-          ...question.sources,
-          ...question.levels,
-          ...question.tags,
-        ]
-          .join(' ')
-          .toLowerCase();
-        return (
-          (!query || searchText.includes(query)) &&
-          (!source || question.sources.includes(source)) &&
-          (!difficulty || question.difficulties.includes(difficulty)) &&
-          (!level || question.levels.includes(level)) &&
-          (!tag || question.tags.includes(tag))
-        );
+    function getSelectedValues(facet: string): string[] {
+      return Array.from(document.querySelectorAll<HTMLInputElement>(`[data-facet="${facet}"]`))
+        .filter((input) => input.checked)
+        .map((input) => input.value);
+    }
+
+    function getMatchMode(): MatchMode {
+      return document.querySelector<HTMLInputElement>('input[name="match-mode"]:checked')?.value === 'any'
+        ? 'any'
+        : 'all';
+    }
+
+    function getSearchTokens(query: string) {
+      const tokens: { field: SearchField | null; value: string }[] = [];
+      query.toLowerCase().split(/\s+/).forEach((raw) => {
+        if (!raw) return;
+        const colon = raw.indexOf(':');
+        if (colon > 0) {
+          const key = raw.slice(0, colon);
+          const value = raw.slice(colon + 1).trim();
+          const field = fieldAliases[key];
+          if (field && value) {
+            tokens.push({ field, value });
+            return;
+          }
+        }
+        tokens.push({ field: null, value: raw });
       });
+      return tokens;
+    }
+
+    function fieldText(question: Question, field: SearchField): string {
+      switch (field) {
+        case 'title':
+          return question.title;
+        case 'statement':
+          return question.statement;
+        case 'solution':
+          return question.solution;
+        case 'source':
+          return question.sources.join(' ');
+        case 'level':
+          return question.levels.join(' ');
+        case 'tag':
+          return question.tags.join(' ');
+        case 'difficulty':
+          return question.difficulties.join(' ');
+      }
+    }
+
+    function matchesKeywords(question: Question, query: string): boolean {
+      const tokens = getSearchTokens(query);
+      if (tokens.length === 0) return true;
+      const scopes = scopeInputs
+        .filter((input) => input.checked)
+        .map((input) => input.dataset.scope as SearchField);
+      return tokens.every((token) => {
+        if (token.field) {
+          return fieldText(question, token.field).toLowerCase().includes(token.value);
+        }
+        return scopes.some((scope) => fieldText(question, scope).toLowerCase().includes(token.value));
+      });
+    }
+
+    function matchesFacet(questionValues: string[], selected: string[], mode: MatchMode): boolean {
+      if (selected.length === 0) return true;
+      return mode === 'all'
+        ? selected.every((value) => questionValues.includes(value))
+        : selected.some((value) => questionValues.includes(value));
+    }
+
+    function ratingNumber(value: string): number | null {
+      return value.startsWith('*') ? Number(value.slice(1)) : null;
+    }
+
+    function matchesRatingRange(question: Question, minValue: string, maxValue: string): boolean {
+      if (!minValue && !maxValue) return true;
+      const ratings = question.difficulties
+        .map(ratingNumber)
+        .filter((value): value is number => value !== null && Number.isFinite(value));
+      if (ratings.length === 0) return false;
+      const min = minValue ? Number(minValue) : 0;
+      const max = maxValue ? Number(maxValue) : Number.POSITIVE_INFINITY;
+      return ratings.some((rating) => rating >= min && rating <= max);
+    }
+
+    function dateKey(value: string): string {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+
+    function matchesDateRange(question: Question, from: string, to: string): boolean {
+      if (!from && !to) return true;
+      const key = dateKey(question.created_at);
+      if (!key) return false;
+      return (!from || key >= from) && (!to || key <= to);
+    }
+
+    function difficultyRank(question: Question): number {
+      const ranks = question.difficulties
+        .map((value) => difficultyOptions.indexOf(value))
+        .filter((index) => index >= 0);
+      return ranks.length > 0 ? Math.min(...ranks) : difficultyOptions.length;
+    }
+
+    function primarySource(question: Question): string {
+      return question.sources[0] || '其他';
+    }
+
+    function compareQuestions(a: Question, b: Question, mode: SortMode): number {
+      const newestFirst = String(b.created_at).localeCompare(String(a.created_at));
+      switch (mode) {
+        case 'oldest':
+          return String(a.created_at).localeCompare(String(b.created_at));
+        case 'difficulty-asc':
+          return difficultyRank(a) - difficultyRank(b) || newestFirst;
+        case 'difficulty-desc':
+          return difficultyRank(b) - difficultyRank(a) || newestFirst;
+        case 'source-asc':
+          return primarySource(a).localeCompare(primarySource(b), 'zh-CN') || newestFirst;
+        case 'source-desc':
+          return primarySource(b).localeCompare(primarySource(a), 'zh-CN') || newestFirst;
+        default:
+          return newestFirst;
+      }
+    }
+
+    function updateFacetSummaries() {
+      (['source', 'difficulty', 'level', 'tag'] as Facet[]).forEach((facet) => {
+        const selected = getSelectedValues(facet);
+        const summary = document.querySelector<HTMLElement>(`[data-menu-summary="${facet}"]`);
+        if (!summary) return;
+        if (selected.length === 0) {
+          summary.textContent = facetSummaryLabels[facet];
+        } else if (selected.length <= 2) {
+          summary.textContent = selected.join('、');
+        } else {
+          summary.textContent = `${selected[0]} 等 ${selected.length} 项`;
+        }
+      });
+    }
+
+    function filterMenuOptions(input: HTMLInputElement) {
+      const facet = input.dataset.menuSearch;
+      if (!facet) return;
+      const query = input.value.trim().toLowerCase();
+      document.querySelectorAll<HTMLElement>(`[data-menu-options="${facet}"] .menu-chip`).forEach((chip) => {
+        const text = chip.textContent?.toLowerCase() ?? '';
+        chip.hidden = query !== '' && !text.includes(query);
+      });
+    }
+
+    function updateResults() {
+      const query = searchInput?.value.trim() ?? '';
+      const mode = getMatchMode();
+      const sources = getSelectedValues('source');
+      const difficulties = getSelectedValues('difficulty');
+      const levels = getSelectedValues('level');
+      const tags = getSelectedValues('tag');
+      const minRating = ratingMin?.value ?? '';
+      const maxRating = ratingMax?.value ?? '';
+      const fromDate = dateFrom?.value ?? '';
+      const toDate = dateTo?.value ?? '';
+      const sortMode = (sortFilter?.value ?? 'newest') as SortMode;
+      const visible = questions
+        .filter((question) => (
+          matchesKeywords(question, query) &&
+          matchesFacet(question.sources, sources, mode) &&
+          matchesFacet(question.difficulties, difficulties, mode) &&
+          matchesFacet(question.levels, levels, mode) &&
+          matchesFacet(question.tags, tags, mode) &&
+          matchesRatingRange(question, minRating, maxRating) &&
+          matchesDateRange(question, fromDate, toDate)
+        ))
+        .sort((a, b) => compareQuestions(a, b, sortMode));
 
       if (questionList) {
         questionList.replaceChildren(...visible.map(buildQuestionRow));
@@ -194,6 +565,7 @@ import {
       }
       if (resultCount) resultCount.textContent = `共 ${visible.length} 道题`;
       if (emptyState) emptyState.hidden = visible.length !== 0;
+      if (sortLabel) sortLabel.textContent = sortLabels[sortMode];
     }
 
     async function loadQuestions() {
@@ -219,13 +591,47 @@ import {
       updateResults();
     }
 
+    function clearFilters() {
+      if (searchInput) searchInput.value = '';
+      scopeInputs.forEach((input) => {
+        input.checked = true;
+      });
+      facetInputs.forEach((input) => {
+        input.checked = false;
+      });
+      matchModeInputs.forEach((input) => {
+        input.checked = input.value === 'all';
+      });
+      if (ratingMin) ratingMin.value = '';
+      if (ratingMax) ratingMax.value = '';
+      if (dateFrom) dateFrom.value = '';
+      if (dateTo) dateTo.value = '';
+      if (sortFilter) sortFilter.value = 'newest';
+      menuSearchInputs.forEach((input) => {
+        input.value = '';
+        filterMenuOptions(input);
+      });
+      updateFacetSummaries();
+      updateResults();
+    }
+
     searchInput?.addEventListener('input', updateResults);
-    sourceFilter?.addEventListener('change', updateResults);
-    difficultyFilter?.addEventListener('change', updateResults);
-    levelFilter?.addEventListener('change', updateResults);
-    tagFilter?.addEventListener('change', updateResults);
+    sortFilter?.addEventListener('change', updateResults);
+    scopeInputs.forEach((input) => input.addEventListener('change', updateResults));
+    facetInputs.forEach((input) => input.addEventListener('change', () => {
+      updateFacetSummaries();
+      updateResults();
+    }));
+    matchModeInputs.forEach((input) => input.addEventListener('change', updateResults));
+    menuSearchInputs.forEach((input) => input.addEventListener('input', () => filterMenuOptions(input)));
+    ratingMin?.addEventListener('change', updateResults);
+    ratingMax?.addEventListener('change', updateResults);
+    dateFrom?.addEventListener('change', updateResults);
+    dateTo?.addEventListener('change', updateResults);
+    clearButton?.addEventListener('click', clearFilters);
     retryButton?.addEventListener('click', () => void loadQuestions());
 
+    updateFacetSummaries();
     void loadQuestions();
     supabase
       .channel('public-questions')
