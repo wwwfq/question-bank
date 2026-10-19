@@ -4,7 +4,7 @@ import {
   difficultyOptions,
   levelOptions,
   sourceOptions,
-  tagOptions,
+  tagGroups,
 } from '../lib/options';
 import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
 ---
@@ -127,12 +127,19 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
           <fieldset class="choice-fieldset">
             <legend>标签</legend>
             <input class="choice-search" id="tag-search" type="search" placeholder="筛选标签" autocomplete="off" />
-            <div class="choice-grid tag-choice-grid" id="tag-options">
-              {tagOptions.map((value) => (
-                <label class="check-chip" data-tag={value.toLowerCase()}>
-                  <input type="checkbox" name="tags" value={value} />
-                  <span>{value}</span>
-                </label>
+            <div class="tag-group-list" id="tag-options">
+              {tagGroups.map((group) => (
+                <section class="tag-group">
+                  <h3 class="tag-group-title">{group.label}</h3>
+                  <div class="choice-grid tag-choice-grid">
+                    {group.tags.map((value) => (
+                      <label class="check-chip" data-tag={value.toLowerCase()}>
+                        <input type="checkbox" name="tags" value={value} />
+                        <span>{value}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </fieldset>
@@ -576,8 +583,14 @@ import { LogOut, Plus, Save, Trash2 } from '@lucide/astro';
     search?.addEventListener('input', renderList);
     tagSearch?.addEventListener('input', () => {
       const query = tagSearch.value.trim().toLowerCase();
-      document.querySelectorAll<HTMLElement>('#tag-options [data-tag]').forEach((item) => {
-        item.hidden = Boolean(query) && !item.dataset.tag?.includes(query);
+      document.querySelectorAll<HTMLElement>('#tag-options .tag-group').forEach((group) => {
+        let visibleCount = 0;
+        group.querySelectorAll<HTMLElement>('[data-tag]').forEach((item) => {
+          const matches = !query || Boolean(item.dataset.tag?.includes(query));
+          item.hidden = !matches;
+          if (matches) visibleCount += 1;
+        });
+        group.hidden = visibleCount === 0;
       });
     });
     logoutButton?.addEventListener('click', async () => {

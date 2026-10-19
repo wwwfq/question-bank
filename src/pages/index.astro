@@ -15,7 +15,7 @@ import {
   difficultyOptions,
   levelOptions,
   sourceOptions,
-  tagOptions,
+  tagGroups,
 } from '../lib/options';
 
 const ratingOptions = difficultyOptions
@@ -177,11 +177,18 @@ const ratingOptions = difficultyOptions
               </label>
             </div>
             <div class="menu-options" data-menu-options="tag">
-              {tagOptions.map((tag) => (
-                <label class="check-chip menu-chip">
-                  <input type="checkbox" data-facet="tag" value={tag} />
-                  <span>{tag}</span>
-                </label>
+              {tagGroups.map((group) => (
+                <section class="menu-group">
+                  <h3 class="menu-group-title">{group.label}</h3>
+                  <div class="menu-group-options">
+                    {group.tags.map((tag) => (
+                      <label class="check-chip menu-chip">
+                        <input type="checkbox" data-facet="tag" value={tag} />
+                        <span>{tag}</span>
+                      </label>
+                    ))}
+                  </div>
+                </section>
               ))}
             </div>
           </div>
@@ -498,6 +505,12 @@ const ratingOptions = difficultyOptions
       document.querySelectorAll<HTMLElement>(`[data-menu-options="${facet}"] .menu-chip`).forEach((chip) => {
         const text = chip.textContent?.toLowerCase() ?? '';
         chip.hidden = query !== '' && !text.includes(query);
+      });
+      document.querySelectorAll<HTMLElement>(`[data-menu-options="${facet}"] .menu-group`).forEach((group) => {
+        const visibleChips = Array.from(group.querySelectorAll<HTMLElement>('.menu-chip')).filter(
+          (chip) => !chip.hidden,
+        );
+        group.hidden = visibleChips.length === 0;
       });
     }
 
