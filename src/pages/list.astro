@@ -1,0 +1,533 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import {
+  FileDown,
+  Plus,
+  Search,
+  Trash2,
+} from '@lucide/astro';
+---
+
+<BaseLayout title="题单 · 算法题库">
+  <section class="workspace problem-set-page">
+    <div class="page-heading">
+      <div>
+        <p class="eyebrow">复习材料</p>
+        <h1>题单</h1>
+        <p class="page-description">从题库中挑选题目，生成只包含题目名与原题链接的 PDF。</p>
+      </div>
+      <div class="problem-set-actions">
+        <button class="outline-button" id="new-set" type="button">
+          <Plus size={17} />
+          <span>新建题单</span>
+        </button>
+        <button class="primary-button" id="export-button" type="button" disabled>
+          <FileDown size={17} />
+          <span>生成 PDF</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="problem-set-layout">
+      <aside class="problem-set-sidebar">
+        <div class="problem-set-sidebar-header">
+          <h2>我的题单</h2>
+        </div>
+        <div class="problem-set-list" id="set-list"></div>
+      </aside>
+
+      <main class="problem-set-main">
+        <div class="empty-state" id="no-set" hidden>
+          <strong>还没有题单</strong>
+          <span>点击右上角「新建题单」开始整理题目。</span>
+        </div>
+
+        <div id="set-editor" hidden>
+          <div class="set-editor-header">
+            <input class="set-name-input" id="set-name" aria-label="题单名称" />
+            <button class="icon-button danger-button" id="delete-set" type="button" title="删除题单">
+              <Trash2 size={18} />
+              <span class="sr-only">删除题单</span>
+            </button>
+          </div>
+
+          <section class="set-section">
+            <div class="set-section-heading">
+              <h2>添加题目</h2>
+              <span class="picker-status" id="picker-status">正在加载题库...</span>
+            </div>
+            <label class="search-box">
+              <Search size={18} />
+              <span class="sr-only">搜索题目</span>
+              <input id="picker-search" type="search" placeholder="搜索标题、来源、级别或标签" autocomplete="off" />
+            </label>
+            <div class="picker-list" id="picker-list"></div>
+          </section>
+
+          <section class="set-section">
+            <div class="set-section-heading">
+              <h2>题单内容</h2>
+              <span class="picker-status" id="picked-count">0 道题</span>
+            </div>
+            <div class="picked-list" id="picked-list"></div>
+          </section>
+        </div>
+      </main>
+    </div>
+
+    <div class="pdf-sheet" id="pdf-sheet" aria-hidden="true"></div>
+  </section>
+
+  <script>
+    import { supabase } from '../lib/supabase';
+    import type { Question } from '../lib/questions';
+
+    type SheetItem = {
+      id: string;
+      title: string;
+      original_url: string;
+    };
+
+    type Sheet = {
+      id: string;
+      name: string;
+      items: SheetItem[];
+    };
+
+    const base = import.meta.env.BASE_URL;
+    const storageKey = 'question-bank:problem-sheets:v1';
+    const activeStorageKey = 'question-bank:active-sheet-id:v1';
+
+    const setList = document.querySelector<HTMLElement>('#set-list');
+    const noSet = document.querySelector<HTMLElement>('#no-set');
+    const setEditor = document.querySelector<HTMLElement>('#set-editor');
+    const setNameInput = document.querySelector<HTMLInputElement>('#set-name');
+    const deleteSetButton = document.querySelector<HTMLButtonElement>('#delete-set');
+    const newSetButton = document.querySelector<HTMLButtonElement>('#new-set');
+    const exportButton = document.querySelector<HTMLButtonElement>('#export-button');
+    const pickerSearch = document.querySelector<HTMLInputElement>('#picker-search');
+    const pickerStatus = document.querySelector<HTMLElement>('#picker-status');
+    const pickerList = document.querySelector<HTMLElement>('#picker-list');
+    const pickedList = document.querySelector<HTMLElement>('#picked-list');
+    const pickedCount = document.querySelector<HTMLElement>('#picked-count');
+    const pdfSheet = document.querySelector<HTMLElement>('#pdf-sheet');
+
+    let questions: Question[] = [];
+    let sheets: Sheet[] = [];
+    let activeId = '';
+    let questionsLoaded = false;
+    let loadFailed = false;
+
+    function createId() {
+      return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+
+    function makeSheet(name: string): Sheet {
+      return { id: createId(), name: name.trim() || '未命名题单', items: [] };
+    }
+
+    function normalizeSheet(value: unknown): Sheet | null {
+      if (!value || typeof value !== 'object') return null;
+      const sheet = value as Partial<Sheet>;
+      if (typeof sheet.id !== 'string' || typeof sheet.name !== 'string') return null;
+      const items = Array.isArray(sheet.items)
+        ? sheet.items
+            .filter((item): item is SheetItem => Boolean(
+              item &&
+              typeof item === 'object' &&
+              typeof (item as SheetItem).id === 'string' &&
+              typeof (item as SheetItem).title === 'string',
+            ))
+            .map((item) => ({
+              id: item.id,
+              title: item.title,
+              original_url: typeof item.original_url === 'string' ? item.original_url : '',
+            }))
+        : [];
+      return { id: sheet.id, name: sheet.name, items };
+    }
+
+    function loadState() {
+      try {
+        const stored = window.localStorage.getItem(storageKey);
+        if (stored === null) {
+          sheets = [makeSheet('我的题单')];
+        } else {
+          const parsed = JSON.parse(stored);
+          sheets = Array.isArray(parsed)
+            ? parsed.map(normalizeSheet).filter((sheet): sheet is Sheet => sheet !== null)
+            : [];
+        }
+      } catch {
+        sheets = [makeSheet('我的题单')];
+      }
+
+      try {
+        const storedActive = window.localStorage.getItem(activeStorageKey);
+        if (storedActive && sheets.some((sheet) => sheet.id === storedActive)) {
+          activeId = storedActive;
+        }
+      } catch {
+        // Ignore unavailable browser storage.
+      }
+
+      if (!activeId && sheets.length > 0) activeId = sheets[0].id;
+    }
+
+    function saveState() {
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(sheets));
+        if (activeId) {
+          window.localStorage.setItem(activeStorageKey, activeId);
+        } else {
+          window.localStorage.removeItem(activeStorageKey);
+        }
+      } catch {
+        // The page still works when browser storage is unavailable.
+      }
+    }
+
+    function activeSheet() {
+      return sheets.find((sheet) => sheet.id === activeId);
+    }
+
+    function iconButtonSvg(path: string) {
+      return `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">${path}</svg>`;
+    }
+
+    function makeMiniButton(svg: string, title: string, className: string, onClick: () => void) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = `mini-icon-button ${className}`;
+      button.title = title;
+      button.setAttribute('aria-label', title);
+      button.innerHTML = svg;
+      button.addEventListener('click', onClick);
+      return button;
+    }
+
+    function renderSetList() {
+      if (!setList) return;
+      setList.replaceChildren(
+        ...sheets.map((sheet) => {
+          const button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'problem-set-nav-item';
+          button.classList.toggle('is-active', sheet.id === activeId);
+          const name = document.createElement('strong');
+          name.textContent = sheet.name;
+          const meta = document.createElement('span');
+          meta.textContent = `${sheet.items.length} 道题`;
+          button.append(name, meta);
+          button.addEventListener('click', () => {
+            activeId = sheet.id;
+            saveState();
+            render();
+          });
+          return button;
+        }),
+      );
+    }
+
+    function renderPdf() {
+      if (!pdfSheet) return;
+      const sheet = activeSheet();
+      pdfSheet.replaceChildren();
+      if (!sheet) return;
+
+      const heading = document.createElement('h1');
+      heading.className = 'pdf-sheet-title';
+      heading.textContent = sheet.name;
+      pdfSheet.append(heading);
+
+      if (sheet.items.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'pdf-sheet-empty';
+        empty.textContent = '题单为空';
+        pdfSheet.append(empty);
+        return;
+      }
+
+      const list = document.createElement('ol');
+      list.className = 'pdf-sheet-list';
+      sheet.items.forEach((item, index) => {
+        const row = document.createElement('li');
+        const number = document.createElement('span');
+        number.className = 'pdf-item-number';
+        number.textContent = String(index + 1);
+        const title = document.createElement('span');
+        title.className = 'pdf-item-title';
+        title.textContent = item.title;
+        const link = document.createElement('a');
+        link.className = 'pdf-item-link';
+        link.textContent = item.original_url || '暂无原题链接';
+        if (item.original_url) link.href = item.original_url;
+        row.append(number, title, link);
+        list.append(row);
+      });
+      pdfSheet.append(list);
+    }
+
+    function renderPickedList() {
+      if (!pickedList) return;
+      const sheet = activeSheet();
+      pickedList.replaceChildren();
+      if (!sheet) return;
+
+      if (pickedCount) pickedCount.textContent = `${sheet.items.length} 道题`;
+      if (exportButton) exportButton.disabled = sheet.items.length === 0;
+
+      if (sheet.items.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'picker-empty';
+        empty.textContent = '从上方题库中挑选题目添加到这里。';
+        pickedList.append(empty);
+        return;
+      }
+
+      sheet.items.forEach((item, index) => {
+        const row = document.createElement('div');
+        row.className = 'picked-item';
+
+        const number = document.createElement('span');
+        number.className = 'picked-index';
+        number.textContent = String(index + 1);
+
+        const body = document.createElement('div');
+        body.className = 'picked-body';
+        const title = document.createElement('a');
+        title.className = 'picked-title';
+        title.href = `${base}question/?id=${encodeURIComponent(item.id)}`;
+        title.textContent = item.title;
+        const link = document.createElement('a');
+        link.className = 'picked-link';
+        link.textContent = item.original_url || '暂无原题链接';
+        if (item.original_url) {
+          link.href = item.original_url;
+          link.target = '_blank';
+          link.rel = 'noreferrer';
+        }
+        body.append(title, link);
+
+        const controls = document.createElement('div');
+        controls.className = 'picked-controls';
+        controls.append(
+          makeMiniButton(
+            iconButtonSvg('<path d="m5 12 7-7 7 7"/><path d="M12 5v14"/>'),
+            '上移',
+            '',
+            () => moveItem(index, -1),
+          ),
+          makeMiniButton(
+            iconButtonSvg('<path d="m19 12-7 7-7-7"/><path d="M12 19V5"/>'),
+            '下移',
+            '',
+            () => moveItem(index, 1),
+          ),
+          makeMiniButton(
+            iconButtonSvg('<path d="M18 6 6 18"/><path d="m6 6 12 12"/>'),
+            '移除',
+            'danger',
+            () => removeItem(index),
+          ),
+        );
+
+        row.append(number, body, controls);
+        pickedList.append(row);
+      });
+    }
+
+    function renderPicker() {
+      if (!pickerList) return;
+      const sheet = activeSheet();
+      const query = pickerSearch?.value.trim().toLowerCase() ?? '';
+      const addedIds = new Set(sheet?.items.map((item) => item.id) ?? []);
+
+      const visible = questions.filter((question) => {
+        if (!query) return true;
+        const haystack = [
+          question.title,
+          question.source_id ?? '',
+          ...question.sources,
+          ...question.levels,
+          ...question.tags,
+        ]
+          .join(' ')
+          .toLowerCase();
+        return haystack.includes(query);
+      });
+
+      if (pickerStatus) {
+        pickerStatus.textContent = questionsLoaded ? `找到 ${visible.length} 道题` : '正在加载题库...';
+      }
+      const limited = visible.slice(0, 80);
+
+      if (limited.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'picker-empty';
+        empty.textContent = !questionsLoaded
+          ? '正在加载题库...'
+          : loadFailed
+            ? '题库加载失败，请刷新页面重试。'
+            : '没有找到匹配的题目。';
+        pickerList.replaceChildren(empty);
+        return;
+      }
+
+      pickerList.replaceChildren(
+        ...limited.map((question) => {
+          const row = document.createElement('div');
+          row.className = 'picker-item';
+
+          const info = document.createElement('div');
+          info.className = 'picker-info';
+          const title = document.createElement('strong');
+          title.textContent = question.title;
+          const meta = document.createElement('span');
+          const sourceText = question.sources.join('、') || '其他';
+          meta.textContent = question.source_id ? `${sourceText} · #${question.source_id}` : sourceText;
+          info.append(title, meta);
+
+          const added = addedIds.has(question.id);
+          const addButton = document.createElement('button');
+          addButton.type = 'button';
+          addButton.className = 'chip-button';
+          addButton.classList.toggle('is-added', added);
+          addButton.textContent = added ? '已添加' : '添加';
+          addButton.disabled = added;
+          if (!added) {
+            addButton.addEventListener('click', () => addQuestion(question));
+          }
+
+          row.append(info, addButton);
+          return row;
+        }),
+      );
+    }
+
+    function addQuestion(question: Question) {
+      const sheet = activeSheet();
+      if (!sheet) return;
+      if (sheet.items.some((item) => item.id === question.id)) return;
+      sheet.items.push({
+        id: question.id,
+        title: question.title,
+        original_url: question.original_url ?? '',
+      });
+      saveState();
+      renderSetList();
+      renderPickedList();
+      renderPicker();
+    }
+
+    function moveItem(index: number, delta: number) {
+      const sheet = activeSheet();
+      if (!sheet) return;
+      const target = index + delta;
+      if (target < 0 || target >= sheet.items.length) return;
+      [sheet.items[index], sheet.items[target]] = [sheet.items[target], sheet.items[index]];
+      saveState();
+      renderPickedList();
+      renderPdf();
+    }
+
+    function removeItem(index: number) {
+      const sheet = activeSheet();
+      if (!sheet) return;
+      sheet.items.splice(index, 1);
+      saveState();
+      renderSetList();
+      renderPickedList();
+      renderPicker();
+      renderPdf();
+    }
+
+    function renderEditor() {
+      const sheet = activeSheet();
+      if (!sheet) {
+        if (noSet) noSet.hidden = false;
+        if (setEditor) setEditor.hidden = true;
+        if (exportButton) exportButton.disabled = true;
+        renderPdf();
+        return;
+      }
+
+      if (noSet) noSet.hidden = true;
+      if (setEditor) setEditor.hidden = false;
+      if (setNameInput) setNameInput.value = sheet.name;
+      renderPickedList();
+      renderPdf();
+    }
+
+    function render() {
+      renderSetList();
+      renderEditor();
+      renderPicker();
+    }
+
+    async function loadQuestions() {
+      const { data, error } = await supabase
+        .from('questions')
+        .select('id,title,source_id,original_url,sources,levels,tags,created_at')
+        .eq('published', true)
+        .order('created_at', { ascending: false })
+        .returns<Question[]>();
+
+      if (error) {
+        if (pickerStatus) pickerStatus.textContent = '题库加载失败';
+        questionsLoaded = true;
+        loadFailed = true;
+        renderPicker();
+        return;
+      }
+
+      questions = data ?? [];
+      questionsLoaded = true;
+      loadFailed = false;
+      renderPicker();
+    }
+
+    newSetButton?.addEventListener('click', () => {
+      const sheet = makeSheet('未命名题单');
+      sheets.push(sheet);
+      activeId = sheet.id;
+      saveState();
+      render();
+      setNameInput?.focus();
+      setNameInput?.select();
+    });
+
+    deleteSetButton?.addEventListener('click', () => {
+      const sheet = activeSheet();
+      if (!sheet || !window.confirm(`确定删除「${sheet.name}」吗？`)) return;
+      sheets = sheets.filter((candidate) => candidate.id !== sheet.id);
+      activeId = sheets[0]?.id ?? '';
+      saveState();
+      render();
+    });
+
+    setNameInput?.addEventListener('input', () => {
+      const sheet = activeSheet();
+      if (!sheet) return;
+      sheet.name = setNameInput.value.trim() || '未命名题单';
+      saveState();
+      renderSetList();
+      renderPdf();
+    });
+
+    pickerSearch?.addEventListener('input', renderPicker);
+
+    exportButton?.addEventListener('click', () => {
+      renderPdf();
+      window.print();
+    });
+
+    window.addEventListener('beforeprint', renderPdf);
+
+    loadState();
+    render();
+    void loadQuestions();
+  </script>
+</BaseLayout>

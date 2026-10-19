@@ -1,7 +1,7 @@
 ---
 import 'katex/dist/katex.min.css';
 import '../styles/global.css';
-import { BookOpen, GitFork, Plus, Settings } from '@lucide/astro';
+import { BookOpen, GitFork, ListChecks, Plus, Settings } from '@lucide/astro';
 
 interface Props {
   title?: string;
@@ -42,6 +42,15 @@ const base = import.meta.env.BASE_URL;
             title="打开 GitHub 仓库"
           >
             <GitFork size={18} />
+          </a>
+          <a
+            class="outline-button"
+            href={`${base}list/`}
+            aria-label="题单"
+            title="题单"
+          >
+            <ListChecks size={17} />
+            <span>题单</span>
           </a>
           <a
             class="outline-button"
