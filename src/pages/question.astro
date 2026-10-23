@@ -62,6 +62,23 @@ const base = import.meta.env.BASE_URL;
     const loading = document.querySelector<HTMLElement>('#detail-loading');
     const errorState = document.querySelector<HTMLElement>('#detail-error');
     const content = document.querySelector<HTMLElement>('#detail-content');
+    const backLink = document.querySelector<HTMLAnchorElement>('.back-link');
+    const appBase = import.meta.env.BASE_URL;
+
+    backLink?.addEventListener('click', (event) => {
+      if (!document.referrer) return;
+
+      try {
+        const referrer = new URL(document.referrer);
+        const indexPath = appBase === '/' ? '/' : appBase;
+        if (referrer.origin !== window.location.origin || referrer.pathname !== indexPath) return;
+      } catch {
+        return;
+      }
+
+      event.preventDefault();
+      window.history.back();
+    });
 
     function appendChip(container: HTMLElement, text: string, className: string) {
       const chip = document.createElement('span');

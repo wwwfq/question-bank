@@ -269,6 +269,8 @@ const ratingOptions = difficultyOptions
     const menuSearchInputs = Array.from(document.querySelectorAll<HTMLInputElement>('[data-menu-search]'));
     let questions: QuestionWithExcerpt[] = [];
     let searchTimer: number | undefined;
+    const scrollStorageKey = 'question-bank:index-scroll:v1';
+    let scrollRestored = false;
 
     const facetSummaryLabels: Record<Facet, string> = {
       source: '全部来源',
@@ -303,6 +305,19 @@ const ratingOptions = difficultyOptions
       'source-asc': '按来源 A-Z 排序',
       'source-desc': '按来源 Z-A 排序',
     };
+
+    const sortModes = new Set<SortMode>([
+      'newest',
+      'oldest',
+      'difficulty-asc',
+      'difficulty-desc',
+      'source-asc',
+      'source-desc',
+    ]);
+
+    function isSortMode(value: string): value is SortMode {
+      return sortModes.has(value as SortMode);
+    }
 
     function appendChip(container: HTMLElement, text: string, className: string) {
       const chip = document.createElement('span');
@@ -378,6 +393,98 @@ const ratingOptions = difficultyOptions
       return document.querySelector<HTMLInputElement>('input[name="tag-match"]:checked')?.value === 'all'
         ? 'all'
         : 'any';
+    }
+
+    function setFacetValues(facet: Facet, values: string[]) {
+      facetInputs
+        .filter((input) => input.dataset.facet === facet)
+        .forEach((input) => {
+          input.checked = values.includes(input.value);
+        });
+    }
+
+    function applyUrlState() {
+      const params = new URLSearchParams(window.location.search);
+
+      const query = params.get('q');
+      if (searchInput && query !== null) searchInput.value = query;
+
+      const sort = params.get('sort');
+      if (sortFilter && sort && isSortMode(sort)) sortFilter.value = sort;
+
+      const scope = params.get('scope');
+      if (scope !== null) {
+        const selectedScopes = scope.split(',').filter(Boolean);
+        scopeInputs.forEach((input) => {
+          const scopeName = input.dataset.scope ?? '';
+          input.checked = selectedScopes.includes(scopeName);
+        });
+      }
+
+      setFacetValues('source', params.getAll('source'));
+      setFacetValues('difficulty', params.getAll('difficulty'));
+      setFacetValues('level', params.getAll('level'));
+      setFacetValues('tag', params.getAll('tag'));
+
+      const tagMatch = params.get('tag-match');
+      tagMatchInputs.forEach((input) => {
+        input.checked = tagMatch === 'all' ? input.value === 'all' : input.value === 'any';
+      });
+
+      const minRating = params.get('rating-min');
+      const maxRating = params.get('rating-max');
+      if (ratingMin && minRating !== null) ratingMin.value = minRating;
+      if (ratingMax && maxRating !== null) ratingMax.value = maxRating;
+    }
+
+    function syncUrlState() {
+      const params = new URLSearchParams();
+      const query = searchInput?.value.trim() ?? '';
+      if (query) params.set('q', query);
+
+      const sort = sortFilter?.value ?? 'newest';
+      if (isSortMode(sort) && sort !== 'newest') params.set('sort', sort);
+
+      const scopes = scopeInputs
+        .filter((input) => input.checked)
+        .map((input) => input.dataset.scope ?? '')
+        .filter(Boolean);
+      if (scopes.length !== scopeInputs.length) params.set('scope', scopes.join(','));
+
+      (['source', 'difficulty', 'level', 'tag'] as Facet[]).forEach((facet) => {
+        getSelectedValues(facet).forEach((value) => params.append(facet, value));
+      });
+
+      if (getTagMatchMode() === 'all') params.set('tag-match', 'all');
+
+      const minRating = ratingMin?.value ?? '';
+      const maxRating = ratingMax?.value ?? '';
+      if (minRating) params.set('rating-min', minRating);
+      if (maxRating) params.set('rating-max', maxRating);
+
+      const search = params.toString();
+      const url = `${window.location.pathname}${search ? `?${search}` : ''}${window.location.hash}`;
+      window.history.replaceState(null, '', url);
+    }
+
+    function saveScrollPosition() {
+      try {
+        window.sessionStorage.setItem(scrollStorageKey, String(window.scrollY));
+      } catch {
+        // Scroll position is optional; ignore unavailable storage.
+      }
+    }
+
+    function restoreScrollPosition() {
+      if (scrollRestored) return;
+      scrollRestored = true;
+      try {
+        const stored = window.sessionStorage.getItem(scrollStorageKey);
+        if (stored) window.scrollTo(0, Number(stored) || 0);
+        window.sessionStorage.removeItem(scrollStorageKey);
+      } catch {
+        // Scroll position is optional; ignore unavailable storage.
+      }
     }
 
     function getSearchTokens(query: string) {
@@ -542,6 +649,7 @@ const ratingOptions = difficultyOptions
       if (resultCount) resultCount.textContent = `共 ${visible.length} 道题`;
       if (emptyState) emptyState.hidden = visible.length !== 0;
       if (sortLabel) sortLabel.textContent = sortLabels[sortMode];
+      syncUrlState();
     }
 
     async function loadQuestions() {
@@ -568,6 +676,7 @@ const ratingOptions = difficultyOptions
       }));
       updateStats();
       updateResults();
+      restoreScrollPosition();
     }
 
     function clearFilters() {
@@ -609,7 +718,9 @@ const ratingOptions = difficultyOptions
     ratingMax?.addEventListener('change', updateResults);
     clearButton?.addEventListener('click', clearFilters);
     retryButton?.addEventListener('click', () => void loadQuestions());
+    window.addEventListener('pagehide', saveScrollPosition);
 
+    applyUrlState();
     updateFacetSummaries();
     void loadQuestions();
     supabase
