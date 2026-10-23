@@ -758,6 +758,12 @@ const ratingOptions = difficultyOptions
         if (facet) clearFacet(facet);
       });
     });
+    document.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) return;
+      document.querySelectorAll<HTMLDetailsElement>('.filter-menu[open]').forEach((menu) => {
+        if (!menu.contains(event.target)) menu.removeAttribute('open');
+      });
+    });
     retryButton?.addEventListener('click', () => void loadQuestions());
     window.addEventListener('pagehide', saveScrollPosition);
 
