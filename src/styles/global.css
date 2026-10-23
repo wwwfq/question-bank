@@ -428,6 +428,31 @@ h3 {
   background: transparent;
 }
 
+.menu-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+.menu-clear {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--text-muted);
+  background: transparent;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.menu-clear:hover {
+  color: var(--red);
+  background: var(--red-soft);
+}
+
 .menu-options {
   max-height: 230px;
   display: flex;
